@@ -574,3 +574,491 @@ sequenceDiagram
     end
     APIGW-->>Client: 요청 결과 반환
 ```
+
+### 2. 게시물 관리
+
+#### 1. 게시물 작성
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant Media as Media
+    participant Poll as Poll
+    participant DB as PostgreSQL
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    Client->>APIGW: POST /api/v1/posts (body: { content, images, videos, poll })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 게시물 생성 요청
+        opt 미디어 업로드
+            Post->>Media: 이미지·동영상 저장 요청
+            Media-->>Post: 미디어 URL 반환
+        end
+        opt 투표 생성
+            Post->>Poll: 투표 생성 요청
+            Poll-->>Post: 투표 ID 반환
+        end
+        Post->>DB: INSERT INTO posts (content, media_urls, poll_id) VALUES (...)
+        DB-->>Post: 201 Created + { post_id, author_id, created_at }
+        Post->>Bus: publish PostCreated 이벤트
+        Post-->>APIGW: 201 Created + { post_id, author, created_at }
+    end
+    APIGW-->>Client: 생성 결과 반환
+```
+
+#### 2. 게시물 조회
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts)
+    participant Feed as Feed
+
+    Client->>APIGW: GET /api/v1/posts?sort={latest|popular|following}&page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 게시물 조회 요청
+        alt 최신순
+            Post->>DB: SELECT * FROM posts ORDER BY created_at DESC LIMIT {size} OFFSET {page×size}
+            DB-->>Post: 게시물 목록
+        else 인기순
+            Post->>DB: SELECT * FROM posts ORDER BY like_count DESC LIMIT {size} OFFSET {page×size}
+            DB-->>Post: 게시물 목록
+        else 팔로우 피드
+            Post->>Feed: 개인화된 팔로우 피드 요청
+            Feed->>Cassandra: 팔로우 중인 사용자 게시물 조회
+            Cassandra-->>Feed: 게시물 ID 리스트
+            Feed->>Post: 게시물 상세 요청 (IDs)
+            Post->>DB: SELECT * FROM posts WHERE id IN (…)
+            DB-->>Post: 게시물 목록
+        end
+        Post-->>APIGW: 200 OK + { posts }
+    end
+    APIGW-->>Client: 응답 반환
+```
+
+#### 3. 게시물 수정
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant Media as Media
+    participant DB as PostgreSQL(Posts)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    Client->>APIGW: PATCH /api/v1/posts/{post_id} (body: { content, images, videos })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 게시물 수정 요청
+        Post->>DB: SELECT author_id FROM posts WHERE id = {post_id}
+        DB-->>Post: author_id 반환
+        alt 작성자 일치
+            opt 미디어 변경
+                alt 이미지 추가
+                    Post->>Media: 이미지 업로드 요청
+                    Media-->>Post: image_url 반환
+                end
+                alt 이미지 제거
+                    Post->>Media: 이미지 삭제 요청
+                    Media-->>Post: 삭제 확인
+                end
+                alt 동영상 추가
+                    Post->>Media: 동영상 업로드 요청
+                    Media-->>Post: video_url 반환
+                end
+                alt 동영상 제거
+                    Post->>Media: 동영상 삭제 요청
+                    Media-->>Post: 삭제 확인
+                end
+            end
+            Post->>DB: UPDATE posts SET content = ..., media_urls = ..., updated_at = now() WHERE id = {post_id}
+            DB-->>Post: 200 OK + 수정된 게시물 정보
+            Post->>Bus: publish PostUpdated 이벤트
+            Post-->>APIGW: 200 OK + { post_id, content, media_urls, updated_at }
+        else 작성자 불일치
+            Post-->>APIGW: 403 Forbidden + { error: "수정 권한 없음" }
+        end
+    end
+    APIGW-->>Client: 응답 반환
+```
+
+#### 4. 게시물 삭제
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Comment as Comment
+
+    Client->>APIGW: DELETE /api/v1/posts/{post_id}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 게시물 삭제 요청
+        Post->>DB: SELECT author_id FROM posts WHERE id = {post_id}
+        DB-->>Post: author_id 반환
+        alt 작성자 일치
+            Post->>DB: DELETE FROM posts WHERE id = {post_id}
+            DB-->>Post: 200 OK
+            Post->>Bus: publish PostDeleted 이벤트
+            par 댓글 및 좋아요 삭제
+                Bus->>Comment: PostDeleted 이벤트
+                Comment->>DB: DELETE FROM comments WHERE post_id = {post_id}
+            end
+            Post-->>APIGW: 204 No Content
+        else 작성자 불일치
+            Post-->>APIGW: 403 Forbidden + { error: "삭제 권한 없음" }
+        end
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 5. 게시물 좋아요
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Notification as Notification
+
+    Client->>APIGW: POST /api/v1/posts/{post_id}/like
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 좋아요 요청
+        Post->>DB: SELECT COUNT(*) FROM post_likes WHERE user_id = 요청자 AND post_id = {post_id}
+        DB-->>Post: 중복 여부 반환
+        alt 중복 없음
+            Post->>DB: INSERT INTO post_likes(user_id, post_id)
+            DB-->>Post: 201 Created
+            Post->>Bus: publish PostLiked 이벤트
+            Bus->>Notification: PostLiked 이벤트
+            Notification->>Notification: 푸시 알림 전송
+            Post-->>APIGW: 204 No Content
+        else 이미 좋아요 함
+            Post-->>APIGW: 400 Bad Request + { error: "Already liked" }
+        end
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 6. 게시물 공유
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts/Reposts)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Notification as Notification
+
+    Client->>APIGW: POST /api/v1/posts/{post_id}/share
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 공유 요청
+        Post->>DB: SELECT * FROM posts WHERE id = {post_id}
+        DB-->>Post: 원본 게시물 데이터 반환
+        Post->>DB: INSERT INTO reposts(user_id, original_post_id, created_at) VALUES (...)
+        DB-->>Post: 201 Created + { share_id }
+        Post->>Bus: publish PostShared 이벤트
+        Bus->>Notification: PostShared 이벤트
+        Notification->>Notification: 푸시 알림 전송
+        Post-->>APIGW: 201 Created + { share_id, original_post_id, sharer_id, created_at }
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 7. 게시물 해시태그
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Search as Search
+    participant OpenSearch as OpenSearch Cluster
+
+    Client->>APIGW: POST /api/v1/posts (body: { content })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 게시물 생성 요청
+        Post->>DB: INSERT INTO posts (content) VALUES (...)
+        DB-->>Post: 201 Created + { post_id }
+        Post->>Bus: publish PostCreated 이벤트 (post_id, content)
+        opt 해시태그 추출
+            Post->>Post: 텍스트에서 해시태그 추출
+            Post->>Bus: publish HashtagsExtracted 이벤트 (post_id, hashtags)
+        end
+        Post-->>APIGW: 201 Created + { post_id }
+    end
+    APIGW-->>Client: 생성 결과 반환
+    opt 해시태그 인덱싱
+        Bus->>Search: HashtagsExtracted 이벤트 구독
+        Search->>OpenSearch: 해시태그-게시물 매핑 색인
+    end
+```
+
+#### 8. 게시물 북마크
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts/Bookmarks)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    opt 게시물 북마크 추가
+        Client->>APIGW: POST /api/v1/posts/{post_id}/bookmark
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Post: 북마크 요청
+            Post->>DB: SELECT COUNT(*) FROM bookmarks WHERE user_id = key.sub AND post_id = {post_id}
+            DB-->>Post: 중복 여부 반환
+            alt 중복 없음
+                Post->>DB: INSERT INTO bookmarks(user_id, post_id, created_at) VALUES(...)
+                DB-->>Post: 201 Created
+                Post->>Bus: publish PostBookmarked 이벤트
+                Post-->>APIGW: 204 No Content
+            else 이미 북마크됨
+                Post-->>APIGW: 400 Bad Request + { error: "Already bookmarked" }
+            end
+        end
+    end
+
+    opt 북마크한 게시물 조회
+        Client->>APIGW: GET /api/v1/bookmarks?page={page}&size={size}
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Post: 북마크 목록 요청
+            Post->>DB: SELECT post_id, created_at FROM bookmarks WHERE user_id = key.sub ORDER BY created_at DESC LIMIT {size} OFFSET {page*size}
+            DB-->>Post: 북마크 목록 반환
+            Post-->>APIGW: 200 OK + { bookmarks: […] }
+        end
+    end
+
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 9. 게시물 통계
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant Redis as Redis Cache(ViewCounters)
+    participant DB as PostgreSQL(Stats)
+
+    Client->>APIGW: GET /api/v1/posts/{post_id}/stats
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 통계 조회 요청
+        Post->>Redis: GET views:{post_id}
+        Redis-->>Post: 조회수 반환
+        Post->>DB: SELECT COUNT(*) FROM post_likes WHERE post_id = {post_id}
+        DB-->>Post: 좋아요 수 반환
+        Post->>DB: SELECT COUNT(*) FROM comments WHERE post_id = {post_id}
+        DB-->>Post: 댓글 수 반환
+        Post-->>APIGW: 200 OK + { views, likes, comments }
+    end
+    APIGW-->>Client: 통계 반환
+```
+
+#### 10. 게시물 신고
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts)
+    participant Cache as Redis Cache(BlockList)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Moderation as Moderation
+
+    Client->>APIGW: POST /api/v1/posts/{post_id}/reports (body: { reasons, block })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 게시물 신고 요청
+        Post->>DB: INSERT INTO post_reports (reporter_id, post_id, reasons) VALUES (...)
+        DB-->>Post: 201 Created + { report_id }
+        opt block=true
+            Post->>Cache: SADD blocks:{reporter_id} {author_id}
+            Post->>Bus: publish UserBlocked 이벤트
+        end
+        Post->>Bus: publish PostReported 이벤트
+        Bus->>Moderation: PostReported 이벤트
+        Post-->>APIGW: 201 Created + { report_id }
+    end
+    APIGW-->>Client: 신고 결과 반환
+```
+
+#### 11. 게시물 필터링
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant Cache as Redis Cache(FilterRules)
+    participant Moderation as Moderation
+    participant DB as PostgreSQL(Posts)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    opt 게시물 작성 시 필터링
+        Client->>APIGW: POST /api/v1/posts (body: { content, media, poll })
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Post: 게시물 작성 요청
+            Post->>Cache: GET filter_rules
+            Cache-->>Post: 필터링 규칙 반환
+            Post->>Post: 키워드·패턴 검사
+            Post->>Moderation: NSFW·ML 검사 요청
+            Moderation-->>Post: 검사 결과
+            alt 부적절 콘텐츠
+                Post-->>APIGW: 400 Bad Request + { error: "Content violates policies" }
+            else 적합
+                Post->>DB: INSERT INTO posts (...)
+                DB-->>Post: post_id 반환
+                Post->>Bus: publish PostCreated 이벤트
+                Post-->>APIGW: 201 Created + { post_id }
+            end
+        end
+    end
+    opt 게시물 수정 시 필터링
+        Client->>APIGW: PATCH /api/v1/posts/{post_id} (body: { content, media })
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Post: 게시물 수정 요청
+            Post->>DB: SELECT author_id FROM posts WHERE id = {post_id}
+            DB-->>Post: author_id 반환
+            alt 작성자 일치
+                Post->>Cache: GET filter_rules
+                Cache-->>Post: 필터링 규칙 반환
+                Post->>Post: 키워드·패턴 검사
+                Post->>Moderation: NSFW·ML 검사 요청
+                Moderation-->>Post: 검사 결과
+                alt 부적절 콘텐츠
+                    Post-->>APIGW: 400 Bad Request + { error: "Content violates policies" }
+                else 적합
+                    Post->>DB: UPDATE posts SET content = ..., media_urls = ..., updated_at = now() WHERE id = {post_id}
+                    DB-->>Post: 수정된 post_id 반환
+                    Post->>Bus: publish PostUpdated 이벤트
+                    Post-->>APIGW: 200 OK + { post_id }
+                end
+            else 작성자 불일치
+                Post-->>APIGW: 403 Forbidden + { error: "수정 권한 없음" }
+            end
+        end
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 12. 게시물 알림
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Post as Post
+    participant DB as PostgreSQL(Posts/Follow)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Notification as Notification
+
+    Client->>APIGW: POST /api/v1/posts (body: { content, media, poll })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Post: 게시물 작성 요청
+        Post->>DB: INSERT INTO posts (...)
+        DB-->>Post: 201 Created + { post_id, author_id, created_at }
+        Post->>Bus: publish PostCreated 이벤트
+        Post-->>APIGW: 201 Created + { post_id, author_id, created_at }
+    end
+    APIGW-->>Client: 생성 결과 반환
+    opt 새 게시물 알림 전송
+        Bus->>Notification: PostCreated 이벤트
+        Notification->>DB: SELECT follower_id FROM follows WHERE following_id = author_id
+        DB-->>Notification: 팔로워 목록
+        loop 팔로워마다
+            Notification->>Notification: 푸시 알림 전송 (follower_id)
+        end
+    end
+```
+
+#### 13. 게시물 검색
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Search as Search
+    participant OpenSearch as OpenSearch Cluster
+
+    Client->>APIGW: GET /api/v1/posts/search?q={query}&page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Search: 게시물 검색 요청
+        Search->>OpenSearch: 인덱스 조회 (본문·해시태그 매칭)
+        OpenSearch-->>Search: 검색 결과 반환
+        Search-->>APIGW: 200 OK + { results, total, page }
+    end
+    APIGW-->>Client: 검색 결과 반환
+```
