@@ -8,7 +8,9 @@
 
 ## 2. 주요 기능
 
-### 1. 회원가입
+### 1. 사용자 관리
+
+#### 1. 회원가입
 
 ```mermaid
 sequenceDiagram
@@ -28,7 +30,7 @@ sequenceDiagram
     APIGW-->>Client: 회원가입 결과 반환
 ```
 
-### 2. 로그인
+#### 2. 로그인
 
 ```mermaid
 sequenceDiagram
@@ -52,7 +54,7 @@ sequenceDiagram
     APIGW-->>Client: 로그인 결과 반환
 ```
 
-### 3. 동시 로그인 제한
+#### 3. 동시 로그인 제한
 
 ```mermaid
 sequenceDiagram
@@ -83,7 +85,7 @@ sequenceDiagram
     APIGW-->>Client: 로그인 결과 반환
 ```
 
-### 4. 회원 탈퇴
+#### 4. 회원 탈퇴
 
 ```mermaid
 sequenceDiagram
@@ -138,7 +140,7 @@ sequenceDiagram
     APIGW-->>Client: 탈퇴 결과 반환
 ```
 
-### 5. 비활성 계정 관리
+#### 5. 비활성 계정 관리
 
 ```mermaid
 sequenceDiagram
@@ -187,7 +189,7 @@ sequenceDiagram
     end
 ```
 
-### 6. 프로필 관리
+#### 6. 프로필 관리
 
 ```mermaid
 sequenceDiagram
@@ -229,7 +231,7 @@ sequenceDiagram
     APIGW-->>Client: 프로필 생성 결과 반환
 ```
 
-### 7. 프로필 조회
+#### 7. 프로필 조회
 
 ```mermaid
 sequenceDiagram
@@ -261,7 +263,7 @@ sequenceDiagram
     APIGW-->>Client: 응답 반환
 ```
 
-### 8. 팔로우/언팔로우
+#### 8. 팔로우/언팔로우
 
 ```mermaid
 sequenceDiagram
@@ -317,7 +319,7 @@ sequenceDiagram
     APIGW-->>Client: 요청 결과 반환
 ```
 
-### 9. 사용자 차단
+#### 9. 사용자 차단
 
 ```mermaid
 sequenceDiagram
@@ -361,7 +363,7 @@ sequenceDiagram
     APIGW-->>Client: 응답 반환
 ```
 
-### 10. 사용자 통계
+#### 10. 사용자 통계
 
 ```mermaid
 sequenceDiagram
@@ -386,7 +388,7 @@ sequenceDiagram
     APIGW-->>Client: 통계 반환
 ```
 
-### 11. 사용자 활동 로그
+#### 11. 사용자 활동 로그
 
 ```mermaid
 sequenceDiagram
@@ -417,7 +419,7 @@ sequenceDiagram
     APIGW-->>Client: 요청 결과 반환
 ```
 
-### 12. 사용자 신고
+#### 12. 사용자 신고
 
 ```mermaid
 sequenceDiagram
@@ -449,7 +451,7 @@ sequenceDiagram
     APIGW-->>Client: 신고 결과 반환
 ```
 
-### 13. 사용자 알림 설정
+#### 13. 사용자 알림 설정
 
 ```mermaid
 sequenceDiagram
@@ -488,7 +490,7 @@ sequenceDiagram
     APIGW-->>Client: 응답 반환
 ```
 
-### 14. 사용자 검색
+#### 14. 사용자 검색
 
 ```mermaid
 sequenceDiagram
@@ -511,7 +513,7 @@ sequenceDiagram
     APIGW-->>Client: 검색 결과 반환
 ```
 
-### 15. 사용자 필터링
+#### 15. 사용자 필터링
 
 ```mermaid
 sequenceDiagram
