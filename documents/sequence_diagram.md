@@ -1062,3 +1062,363 @@ sequenceDiagram
     end
     APIGW-->>Client: 검색 결과 반환
 ```
+
+### 3. 댓글 관리
+
+#### 1. 댓글 작성
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant Media as Media
+    participant DB as PostgreSQL(Comments)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    Client->>APIGW: POST /api/v1/posts/{post_id}/comments (body: { content, media, video })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Comment: 댓글 작성 요청
+        opt 미디어 첨부
+            Comment->>Media: 이미지·동영상 저장 요청
+            Media-->>Comment: media_url 반환
+        end
+        Comment->>DB: INSERT INTO comments (post_id, user_id, content, media_urls, created_at) VALUES (...)
+        DB-->>Comment: 201 Created + { comment_id, author, created_at }
+        Comment->>Bus: publish CommentCreated 이벤트
+        Comment-->>APIGW: 201 Created + { comment_id, author, created_at }
+    end
+    APIGW-->>Client: 생성 결과 반환
+```
+
+#### 2. 댓글 조회
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant DB as PostgreSQL(Comments)
+
+    Client->>APIGW: GET /api/v1/posts/{post_id}/comments?sort={latest|popular}&page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Comment: 댓글 조회 요청
+        alt 최신순
+            Comment->>DB: SELECT * FROM comments WHERE post_id = {post_id} ORDER BY created_at DESC LIMIT {size} OFFSET {page*size}
+        else 인기순
+            Comment->>DB: SELECT * FROM comments WHERE post_id = {post_id} ORDER BY like_count DESC LIMIT {size} OFFSET {page*size}
+        end
+        DB-->>Comment: 댓글 목록 반환
+        Comment-->>APIGW: 200 OK + { comments }
+    end
+    APIGW-->>Client: 조회 결과 반환
+```
+
+#### 3. 댓글 수정
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant Media as Media
+    participant DB as PostgreSQL(Comments)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    Client->>APIGW: PATCH /api/v1/posts/{post_id}/comments/{comment_id} (body: { content, media })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Comment: 댓글 수정 요청
+        Comment->>DB: SELECT author_id FROM comments WHERE id = {comment_id}
+        DB-->>Comment: author_id 반환
+        alt 작성자 일치
+            opt 미디어 변경
+                alt 이미지 추가
+                    Comment->>Media: 이미지 업로드 요청
+                    Media-->>Comment: image_url 반환
+                end
+                alt 이미지 제거
+                    Comment->>Media: 이미지 삭제 요청
+                    Media-->>Comment: 삭제 확인
+                end
+                alt 동영상 추가
+                    Comment->>Media: 동영상 업로드 요청
+                    Media-->>Comment: video_url 반환
+                end
+                alt 동영상 제거
+                    Comment->>Media: 동영상 삭제 요청
+                    Media-->>Comment: 삭제 확인
+                end
+            end
+            Comment->>DB: UPDATE comments SET content = ..., media_urls = ..., updated_at = now() WHERE id = {comment_id}
+            DB-->>Comment: 수정된 comment_id, updated_at 반환
+            Comment->>Bus: publish CommentUpdated 이벤트
+            Comment-->>APIGW: 200 OK + { comment_id, content, media_urls, updated_at }
+        else 작성자 불일치
+            Comment-->>APIGW: 403 Forbidden + { error: "수정 권한 없음" }
+        end
+    end
+    APIGW-->>Client: 응답 반환
+```
+
+#### 4. 댓글 삭제
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant DB as PostgreSQL(Comments)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    Client->>APIGW: DELETE /api/v1/posts/{post_id}/comments/{comment_id}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Comment: 댓글 삭제 요청
+        Comment->>DB: SELECT author_id FROM comments WHERE id = {comment_id}
+        DB-->>Comment: author_id 반환
+        alt 작성자 일치
+            Comment->>DB: DELETE FROM comments WHERE id = {comment_id}
+            DB-->>Comment: 204 No Content
+            Comment->>Bus: publish CommentDeleted 이벤트
+            Comment-->>APIGW: 204 No Content
+        else 작성자 불일치
+            Comment-->>APIGW: 403 Forbidden + { error: "삭제 권한 없음" }
+        end
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 5. 대댓글
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant Media as Media
+    participant DB as PostgreSQL(Comments)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+
+    opt 대댓글 작성
+        Client->>APIGW: POST /api/v1/posts/{post_id}/comments/{comment_id}/replies (body: { content, media })
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Comment: 대댓글 작성 요청
+            Comment->>DB: SELECT * FROM comments WHERE id = {comment_id}
+            DB-->>Comment: 부모 댓글 존재 여부 확인
+            alt 부모 댓글 존재
+                opt 미디어 첨부
+                    Comment->>Media: 이미지·동영상 저장 요청
+                    Media-->>Comment: media_url 반환
+                end
+                Comment->>DB: INSERT INTO comments (post_id, parent_id, user_id, content, media_urls, created_at) VALUES (...)
+                DB-->>Comment: 201 Created + { reply_id, author, created_at }
+                Comment->>Bus: publish CommentReplied 이벤트
+                Comment-->>APIGW: 201 Created + { reply_id, author, created_at }
+            else 부모 댓글 없음
+                Comment-->>APIGW: 404 Not Found + { error: "Parent Comment Not Found" }
+            end
+        end
+    end
+    opt 대댓글 조회
+        Client->>APIGW: GET /api/v1/posts/{post_id}/comments/{comment_id}/replies?page={page}&size={size}
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Comment: 대댓글 조회 요청
+            Comment->>DB: SELECT * FROM comments WHERE parent_id = {comment_id} ORDER BY created_at DESC LIMIT {size} OFFSET {page*size}
+            DB-->>Comment: 대댓글 목록 반환
+            Comment-->>APIGW: 200 OK + { replies }
+        end
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 6. 댓글 좋아요
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant DB as PostgreSQL(Comments/Likes)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Notification as Notification
+
+    Client->>APIGW: POST /api/v1/comments/{comment_id}/like
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Comment: 좋아요 요청
+        Comment->>DB: SELECT COUNT(*) FROM comment_likes WHERE user_id = key.sub AND comment_id = {comment_id}
+        DB-->>Comment: 중복 여부 반환
+        alt 중복 없음
+            Comment->>DB: INSERT INTO comment_likes(user_id, comment_id)
+            DB-->>Comment: 201 Created
+            Comment->>Bus: publish CommentLiked 이벤트
+            Bus->>Notification: CommentLiked 이벤트
+            Notification->>Notification: 푸시 알림 전송
+            Comment-->>APIGW: 204 No Content
+        else 이미 좋아요 함
+            Comment-->>APIGW: 400 Bad Request + { error: "Already liked" }
+        end
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 7. 댓글 신고
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant DB as PostgreSQL(Comments/Reports)
+    participant Cache as Redis Cache(BlockList)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Moderation as Moderation
+
+    Client->>APIGW: POST /api/v1/comments/{comment_id}/reports (body: { reasons, block })
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Comment: 댓글 신고 요청
+        Comment->>DB: INSERT INTO comment_reports (reporter_id, comment_id, reasons) VALUES (...)
+        DB-->>Comment: 201 Created + 신고 정보
+        opt block=true
+            Comment->>Cache: SADD blocks:{reporter_id} {target_user_id}
+            Comment->>Bus: publish UserBlocked 이벤트
+        end
+        Comment->>Bus: publish CommentReported 이벤트
+        Bus->>Moderation: CommentReported 이벤트
+        Comment-->>APIGW: 201 Created + { report_id }
+    end
+    APIGW-->>Client: 신고 결과 반환
+```
+
+#### 8. 댓글 필터링
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant Cache as Redis Cache(FilterRules)
+    participant Moderation as Moderation
+    participant DB as PostgreSQL(Comments)
+
+    opt 댓글 작성 시 필터링
+        Client->>APIGW: POST /api/v1/posts/{post_id}/comments (body: { content, media })
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Comment: 댓글 작성 요청
+            Comment->>Cache: GET filter_rules
+            Cache-->>Comment: 필터링 규칙 반환
+            Comment->>Comment: 키워드·패턴 검사
+            Comment->>Moderation: NSFW·ML 검사 요청
+            Moderation-->>Comment: 검사 결과
+            alt 부적절 콘텐츠
+                Comment-->>APIGW: 400 Bad Request + { error: "Content violates policies" }
+            else 적합
+                Comment->>DB: INSERT INTO comments (post_id, user_id, content, media_urls) VALUES (...)
+                DB-->>Comment: 201 Created + { comment_id, author, created_at }
+                Comment->>Bus: publish CommentCreated 이벤트
+                Comment-->>APIGW: 201 Created + { comment_id, author, created_at }
+            end
+        end
+    end
+    opt 댓글 수정 시 필터링
+        Client->>APIGW: PATCH /api/v1/posts/{post_id}/comments/{comment_id} (body: { content, media })
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+        else 인증 성공
+            APIGW->>Comment: 댓글 수정 요청
+            Comment->>DB: SELECT author_id FROM comments WHERE id = {comment_id}
+            DB-->>Comment: author_id 반환
+            alt 작성자 일치
+                Comment->>Cache: GET filter_rules
+                Cache-->>Comment: 필터링 규칙 반환
+                Comment->>Comment: 키워드·패턴 검사
+                Comment->>Moderation: NSFW·ML 검사 요청
+                Moderation-->>Comment: 검사 결과
+                alt 부적절 콘텐츠
+                    Comment-->>APIGW: 400 Bad Request + { error: "Content violates policies" }
+                else 적합
+                    Comment->>DB: UPDATE comments SET content = ..., media_urls = ..., updated_at = now() WHERE id = {comment_id}
+                    DB-->>Comment: 200 OK + { comment_id, updated_at }
+                    Comment->>Bus: publish CommentUpdated 이벤트
+                    Comment-->>APIGW: 200 OK + { comment_id, updated_at }
+                end
+            else 작성자 불일치
+                Comment-->>APIGW: 403 Forbidden + { error: "수정 권한 없음" }
+            end
+        end
+    end
+    APIGW-->>Client: 요청 결과 반환
+```
+
+#### 9. 댓글 알림
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Comment as Comment
+    participant DBComments as PostgreSQL(Comments)
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Notification as Notification
+    participant DBPosts as PostgreSQL(Posts)
+    participant DBFollow as PostgreSQL(Profile)
+
+    Client->>APIGW: POST /api/v1/posts/{post_id}/comments
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else
+        APIGW->>Comment: 댓글 작성 요청
+        Comment->>DBComments: INSERT INTO comments (post_id, user_id, content, media_urls, created_at)
+        DBComments-->>Comment: 201 Created + { comment_id, post_id, user_id, created_at }
+        Comment->>Bus: publish CommentCreated 이벤트
+        Comment-->>APIGW: 201 Created + { comment_id, author, created_at }
+    end
+    APIGW-->>Client: 생성 결과 반환
+    opt 알림 전송
+        Bus->>Notification: CommentCreated 이벤트
+        Notification->>DBPosts: SELECT user_id FROM posts WHERE id = {post_id}
+        DBPosts-->>Notification: post_author_id
+        Notification->>Notification: 푸시 알림 전송 (post_author_id)
+        Notification->>DBFollow: SELECT follower_id FROM follows WHERE following_id = post_author_id
+        DBFollow-->>Notification: [follower_id…]
+        loop for each follower_id
+            Notification->>Notification: 푸시 알림 전송 (follower_id)
+        end
+    end
+```
