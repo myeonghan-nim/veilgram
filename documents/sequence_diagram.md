@@ -1422,3 +1422,314 @@ sequenceDiagram
         end
     end
 ```
+
+### 4. 피드 및 탐색
+
+#### 1. 팔로우 기반 피드
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Feed as Feed
+    participant Redis as Redis Cache
+    participant Cassandra as Cassandra
+
+    Client->>APIGW: GET /api/v1/feed/following?page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Feed: 팔로우 기반 피드 요청
+        Feed->>Redis: GET feed:following:{user_id}:{page}
+        alt 캐시된 피드 조회
+            Redis-->>Feed: 캐시된 피드 반환
+        else 캐시 미스
+            Feed->>Redis: SMEMBERS followings:{user_id}
+            Redis-->>Feed: 팔로잉 사용자 목록
+            Feed->>Cassandra: SELECT * FROM feed_posts WHERE author_id IN (…)\nORDER BY created_at DESC LIMIT {size} OFFSET {(page–1)×size}
+            Cassandra-->>Feed: 피드 데이터 반환
+            Feed->>Redis: SET feed:following:{user_id}:{page} = 피드 데이터 PX 60000
+        end
+        Feed-->>APIGW: 200 OK + { posts }
+    end
+    APIGW-->>Client: 피드 반환
+```
+
+#### 2. 인기 게시물 피드
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Feed as Feed
+    participant Redis as Redis Cache
+    participant Cassandra as Cassandra
+
+    Client->>APIGW: GET /api/v1/feed/popular?page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Feed: 인기 게시물 피드 요청
+        Feed->>Redis: GET feed:popular:{page}
+        alt 캐시된 피드 조회
+            Redis-->>Feed: 캐시된 피드 반환
+        else 캐시 미스
+            Feed->>Cassandra: SELECT * FROM feed_posts ORDER BY like_count DESC LIMIT {size} OFFSET {(page-1)×size}
+            Cassandra-->>Feed: 피드 데이터 반환
+            Feed->>Redis: SET feed:popular:{page} = 피드 데이터 PX 60000
+        end
+        Feed-->>APIGW: 200 OK + { posts }
+    end
+    APIGW-->>Client: 피드 반환
+```
+
+#### 3. 해시태그 피드
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Feed as Feed
+    participant Redis as Redis Cache
+    participant Cassandra as Cassandra
+
+    Client->>APIGW: GET /api/v1/feed/hashtags/{tag}?page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Feed: 해시태그 기반 피드 요청
+        Feed->>Redis: GET feed:hashtag:{tag}:{page}
+        alt 캐시 히트
+            Redis-->>Feed: 캐시된 피드 반환
+        else 캐시 미스
+            Feed->>Cassandra: SELECT * FROM feed_hashtag_posts\nWHERE hashtag = {tag}\nORDER BY created_at DESC\nLIMIT {size} OFFSET {(page-1)×size}
+            Cassandra-->>Feed: 피드 데이터 반환
+            Feed->>Redis: SET feed:hashtag:{tag}:{page} = 피드 데이터 PX 60000
+        end
+        Feed-->>APIGW: 200 OK + { posts }
+    end
+    APIGW-->>Client: 피드 반환
+```
+
+#### 4. 탐색(Discover)
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Feed as Feed
+    participant Redis as Redis Cache
+    participant Cassandra as Cassandra
+    participant Search as Search
+    participant User as User
+
+    Client->>APIGW: GET /api/v1/discover?page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Feed: Discover 요청
+        Feed->>Redis: GET discover:popular:{page}
+        alt 캐시된 콘텐츠 조회
+            Redis-->>Feed: 인기 콘텐츠 반환
+        else 캐시 미스
+            Feed->>Cassandra: SELECT * FROM feed_posts ORDER BY popularity DESC LIMIT {size} OFFSET {(page-1)*size}
+            Cassandra-->>Feed: 인기 콘텐츠 목록
+            Feed->>Redis: SET discover:popular:{page} = 목록 PX 60000
+        end
+        Feed->>Search: 추천 해시태그 요청
+        Search->>Cassandra: SELECT hashtag, COUNT(*) FROM feed_hashtag_posts GROUP BY hashtag ORDER BY COUNT DESC LIMIT {size}
+        Cassandra-->>Search: 인기 해시태그 반환
+        Search-->>Feed: 인기 해시태그 목록
+        Feed->>User: 추천 사용자 요청
+        User->>DB: SELECT id, nickname FROM users ORDER BY engagement_score DESC LIMIT {size}
+        DB-->>User: 추천 사용자 목록
+        User-->>Feed: 추천 사용자 목록
+        Feed-->>APIGW: 200 OK + { posts, hashtags, users }
+    end
+    APIGW-->>Client: Discover 결과 반환
+```
+
+#### 5. 실시간 피드 업데이트
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Realtime as Realtime
+    participant Redis as Redis Pub/Sub
+    participant Bus as Message Bus
+    participant Feed as Feed
+
+    opt 연결
+        Client->>APIGW: WebSocket 연결 요청 (/ws/feed?token={jwt})
+        APIGW->>Auth: JWT 검증
+        alt 인증 실패
+            Auth-->>APIGW: 401 Unauthorized
+            APIGW-->>Client: 연결 거부
+        else 인증 성공
+            Auth-->>APIGW: 200 OK
+            APIGW->>Realtime: WebSocket 핸드셰이크 전달
+            Realtime->>Redis: SUBSCRIBE feed:updates:{user_id}
+            Realtime-->>Client: 연결 성공
+        end
+    end
+
+    opt 실시간 업데이트
+        Feed->>Bus: FeedUpdated 이벤트 발행
+        Bus->>Realtime: FeedUpdated 전달
+        Realtime->>Client: 메시지 전송 ({ event: "feed_update", data: {...} })
+    end
+```
+
+#### 6. 사용자 추천
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Recommendation as Recommendation
+    participant Redis as Redis Cache(RecommendCache)
+    participant DB as PostgreSQL(Auth/Profile)
+
+    Client->>APIGW: GET /api/v1/users/recommend?page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Recommendation: 사용자 추천 요청
+        Recommendation->>Redis: GET recommendations:{user_id}:{page}
+        alt 캐시된 추천 조회
+            Redis-->>Recommendation: 추천 사용자 목록 반환
+        else 캐시 미스
+            Recommendation->>DB: SELECT id, nickname FROM users WHERE uuid != key.sub ORDER BY engagement_score DESC LIMIT {size} OFFSET {(page-1)*size}
+            DB-->>Recommendation: 추천 사용자 목록 반환
+            Recommendation->>Redis: SET recommendations:{user_id}:{page} = 목록 PX 60000
+        end
+        Recommendation-->>APIGW: 200 OK + { recommendations }
+    end
+    APIGW-->>Client: 사용자 추천 결과 반환
+```
+
+#### 7. 인기 해시태그
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Feed as Feed
+    participant Redis as Redis Cache(HashtagCounters)
+    participant Bus as Message Bus (Kafka/RabbitMQ/Redis)
+
+    Client->>APIGW: GET /api/v1/hashtags/popular?page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Feed: 인기 해시태그 요청
+        Feed->>Redis: ZREVRANGE hashtag_counters 0 {size-1} WITHSCORES
+        Redis-->>Feed: 인기 해시태그 목록 및 카운트
+        Feed-->>APIGW: 200 OK + { hashtags: […], counts: […] }
+    end
+    APIGW-->>Client: 요청 결과 반환
+
+    opt 해시태그 카운트 갱신
+        Bus->>Feed: HashtagsExtracted 이벤트 (post_id, hashtags)
+        Feed->>Redis: ZINCRBY hashtag_counters 1 {each_hashtag}
+    end
+```
+
+#### 8. 피드 필터링
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Feed as Feed
+    participant FeedCache as Redis Cache(FeedCache)
+    participant Cassandra as Cassandra(Feed)
+    participant FilterCache as Redis Cache(FilterRules)
+    participant Moderation as Moderation
+
+    Client->>APIGW: GET /api/v1/feed/following?page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Feed: 팔로우 기반 피드 요청
+        Feed->>FeedCache: GET feed:following:{user_id}:{page}
+        alt 캐시된 피드 조회
+            FeedCache-->>Feed: 피드 데이터 반환
+        else 캐시 미스
+            Feed->>Cassandra: 팔로우 사용자 게시물 조회 및 정렬
+            Cassandra-->>Feed: 피드 데이터 반환
+            Feed->>FeedCache: 피드 데이터 캐시에 저장
+        end
+        opt 피드 필터링
+            Feed->>FilterCache: GET filter_rules
+            FilterCache-->>Feed: 필터링 규칙 반환
+            Feed->>Feed: 키워드·패턴 검사
+            Feed->>Moderation: NSFW·ML 검사 요청
+            Moderation-->>Feed: 필터링 결과
+            Feed->>Feed: 부적합 콘텐츠 제거
+        end
+        Feed-->>APIGW: 200 OK + { posts }
+    end
+    APIGW-->>Client: 응답 반환
+```
+
+#### 9. 피드 검색
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant APIGW as API Gateway(Nginx Ingress)
+    participant Auth as Auth
+    participant Search as Search
+    participant OpenSearch as OpenSearch Cluster
+
+    Client->>APIGW: GET /api/v1/feed/search?q={query}&page={page}&size={size}
+    APIGW->>Auth: JWT 검증
+    alt 인증 실패
+        Auth-->>APIGW: 401 Unauthorized + { error: "Authentication Required" }
+    else 인증 성공
+        APIGW->>Search: 피드 검색 요청
+        Search->>OpenSearch: 인덱스 조회 (게시물·해시태그 매칭)
+        OpenSearch-->>Search: 검색 결과 반환
+        Search-->>APIGW: 200 OK + { posts, total, page }
+    end
+    APIGW-->>Client: 검색 결과 반환
+```
+
+#### 10. 피드 알림
+
+```mermaid
+sequenceDiagram
+    participant Feed as Feed
+    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Notification as Notification
+    participant DB as PostgreSQL(UserDevices)
+
+    opt 피드 업데이트 처리
+        Bus->>Feed: PostCreated 이벤트
+        Feed->>Feed: 캐시 갱신 및 피드 항목 생성
+        Feed->>Bus: FeedUpdated 이벤트
+    end
+    opt 피드 알림 전송
+        Bus->>Notification: FeedUpdated 이벤트
+        Notification->>DB: SELECT device_tokens FROM devices WHERE user_id = 이벤트대상
+        DB-->>Notification: 토큰 목록 반환
+        Notification->>Notification: 푸시 알림 전송 (피드 업데이트 알림)
+    end
+```
