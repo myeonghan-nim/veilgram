@@ -15,10 +15,10 @@
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
-    participant Auth as Auth Service(JWT)
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant APIGW as API Gateway
+    participant Auth as Auth
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     Client->>APIGW: POST /api/v1/auth/signup
     APIGW->>Auth: 회원가입 요청
@@ -35,10 +35,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
-    participant Auth as Auth Service(JWT)
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant APIGW as API Gateway
+    participant Auth as Auth
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     Client->>APIGW: POST /api/v1/auth/login (body: { key })
     APIGW->>Auth: 로그인 요청
@@ -59,11 +59,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
-    participant Auth as Auth Service(JWT)
-    participant SessionCache as Redis Cache(SessionStore)
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant APIGW as API Gateway
+    participant Auth as Auth
+    participant SessionCache as Redis Cache
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     Client->>APIGW: POST /api/v1/auth/login (body: { key, device_id })
     APIGW->>Auth: 로그인 요청
@@ -90,20 +90,20 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
-    participant Auth as Auth Service(JWT)
-    participant SessionCache as Redis Cache(SessionStore)
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
-    participant User as User Service(Profile)
-    participant Post as Post Service
-    participant Comment as Comment Service
-    participant Media as Media Service
-    participant Poll as Poll Service
-    participant Search as Search Service
+    participant APIGW as API Gateway
+    participant Auth as Auth
+    participant User as User
+    participant DB as PostgreSQL
+    participant SessionCache as Redis Cache
+    participant Bus as Message Bus
+    participant Post as Post
+    participant Comment as Comment
+    participant Media as Media
+    participant Poll as Poll
+    participant Search as Search
     participant Storage as MinIO + Varnish
-    participant RedisCtr as Redis Cache(VoteCounters)
-    participant OpenSearch as OpenSearch Cluster(Search Index)
+    participant RedisCtr as Redis Cache
+    participant OpenSearch as OpenSearch Cluster
 
     Client->>APIGW: DELETE /api/v1/auth/unregister (body: { key })
     APIGW->>Auth: 탈퇴 요청
@@ -144,19 +144,19 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Scheduler as Scheduler (Celery Beat)
-    participant User as User Service (Profile)
-    participant DB as PostgreSQL (Auth/Profile)
-    participant Auth as Auth Service (JWT)
-    participant SessionCache as Redis Cache (SessionStore)
-    participant Bus as Message Bus (Kafka/RabbitMQ/Redis)
-    participant Post as Post Service
-    participant Comment as Comment Service
-    participant Media as Media Service
-    participant Poll as Poll Service
-    participant Search as Search Service
+    participant Scheduler as Scheduler
+    participant User as User
+    participant Auth as Auth
+    participant DB as PostgreSQL
+    participant SessionCache as Redis Cache
+    participant Bus as Message Bus
+    participant Post as Post
+    participant Comment as Comment
+    participant Media as Media
+    participant Poll as Poll
+    participant Search as Search
 
-    Scheduler->>User: 비화설 계정 삭제 트리거
+    Scheduler->>User: 비활성 계정 삭제 트리거
     User->>DB: SELECT uuid FROM users WHERE last_active ≤ now() – retention_period
     DB-->>User: 해당되는 계정 목록 반환
     alt 계정 존재
@@ -194,13 +194,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
-    participant DB as PostgreSQL(Profile)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant User as User
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Cache as Redis Cache(FilterRules)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Cache as Redis Cache
+    participant Bus as Message Bus
 
     Client->>APIGW: POST /api/v1/profile (body: { nickname })
     APIGW->>Auth: JWT 검증
@@ -236,15 +235,14 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant User as User
-    participant DB as PostgreSQL(Auth/Profile)
+    participant DB as PostgreSQL
 
     Client->>APIGW: GET /api/v1/profile/{user_id}
     APIGW->>Auth: JWT 검증
     alt 인증 성공
-        Auth-->>APIGW: 200 OK
         APIGW->>User: 프로필 조회 요청
         User->>DB: SELECT * FROM profiles WHERE user_id = {user_id}
         DB-->>User: 프로필 데이터 반환
@@ -268,11 +266,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant User as User
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
     participant Notification as Notification
 
     alt 팔로우 요청
@@ -285,7 +283,7 @@ sequenceDiagram
             User->>DB: SELECT COUNT(*) FROM follows WHERE follower_id = 요청자 AND following_id = 대상
             DB-->>User: 중복 여부 반환
             alt 중복 없음
-                User->>DB: INSERT INTO follows(follower_id, following_id)
+                User->>DB: INSERT INTO follows (follower_id, following_id)
                 DB-->>User: 201 Created
                 User->>Bus: publish UserFollowed 이벤트
                 Bus->>Notification: UserFollowed 이벤트
@@ -324,13 +322,13 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Feed as Feed
     participant Comment as Comment
-    participant Redis as Redis Cache(BlockList)
-    participant Cassandra as Cassandra(Feed)
-    participant DB as PostgreSQL(Profile)
+    participant Redis as Redis Cache
+    participant Cassandra as Cassandra
+    participant DB as PostgreSQL
 
     opt 피드 조회
         Client->>APIGW: GET /api/v1/feed
@@ -368,10 +366,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant User as User
-    participant DB as PostgreSQL(Auth/Profile)
+    participant DB as PostgreSQL
 
     Client->>APIGW: GET /api/v1/profile/{user_id}/stats
     APIGW->>Auth: JWT 검증
@@ -393,10 +391,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Bus as Message Bus
     participant Audit as Audit
 
     opt 로그인 활동
@@ -424,12 +422,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant User as User
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Cache as Redis Cache(BlockList)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Cache as Redis Cache
+    participant Bus as Message Bus
     participant Moderation as Moderation
 
     Client->>APIGW: POST /api/v1/users/{target_user_id}/reports (body: { reasons, block })
@@ -456,11 +454,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant User as User
-    participant DB as PostgreSQL(Auth/Profile)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     opt 알림 설정 조회
         Client->>APIGW: GET /api/v1/notifications/settings
@@ -495,10 +493,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Search as Search
-    participant OpenSearch as OpenSearch Cluster(Search Index)
+    participant OpenSearch as OpenSearch Cluster
 
     Client->>APIGW: GET /api/v1/search/users?q={검색어}&page={페이지}
     APIGW->>Auth: JWT 검증
@@ -518,14 +516,14 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
     participant Comment as Comment
-    participant Cache as Redis Cache(FilterRules)
+    participant Cache as Redis Cache
     participant Moderation as Moderation
-    participant DB as PostgreSQL(Feed)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     opt 게시물 작성
         Client->>APIGW: POST /api/v1/posts (body: { content, media, poll })
@@ -542,7 +540,7 @@ sequenceDiagram
             alt 부적절 콘텐츠 검출
                 Post-->>APIGW: 400 Bad Request + { error: "Content violates policies" }
             else 콘텐츠 적합
-                Post->>DB: INSERT INTO posts(...)
+                Post->>DB: INSERT INTO posts (...)
                 DB-->>Post: 201 Created + { post_id }
                 Post->>Bus: publish PostCreated 이벤트
                 Post-->>APIGW: 201 Created + { post_id }
@@ -565,7 +563,7 @@ sequenceDiagram
             alt 부적절 콘텐츠 검출
                 Comment-->>APIGW: 400 Bad Request + { error: "Content violates policies" }
             else 콘텐츠 적합
-                Comment->>DB: INSERT INTO comments(...)
+                Comment->>DB: INSERT INTO comments (...)
                 DB-->>Comment: 201 Created + { comment_id }
                 Comment->>Bus: publish CommentCreated 이벤트
                 Comment-->>APIGW: 201 Created + { comment_id }
@@ -582,13 +580,13 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
     participant Media as Media
     participant Poll as Poll
     participant DB as PostgreSQL
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Bus as Message Bus
 
     Client->>APIGW: POST /api/v1/posts (body: { content, images, videos, poll })
     APIGW->>Auth: JWT 검증
@@ -617,10 +615,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts)
+    participant DB as PostgreSQL
     participant Feed as Feed
 
     Client->>APIGW: GET /api/v1/posts?sort={latest|popular|following}&page={page}&size={size}
@@ -653,12 +651,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
     participant Media as Media
-    participant DB as PostgreSQL(Posts)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     Client->>APIGW: PATCH /api/v1/posts/{post_id} (body: { content, images, videos })
     APIGW->>Auth: JWT 검증
@@ -703,11 +701,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
     participant Comment as Comment
 
     Client->>APIGW: DELETE /api/v1/posts/{post_id}
@@ -739,11 +737,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
     participant Notification as Notification
 
     Client->>APIGW: POST /api/v1/posts/{post_id}/like
@@ -755,7 +753,7 @@ sequenceDiagram
         Post->>DB: SELECT COUNT(*) FROM post_likes WHERE user_id = 요청자 AND post_id = {post_id}
         DB-->>Post: 중복 여부 반환
         alt 중복 없음
-            Post->>DB: INSERT INTO post_likes(user_id, post_id)
+            Post->>DB: INSERT INTO post_likes (user_id, post_id)
             DB-->>Post: 201 Created
             Post->>Bus: publish PostLiked 이벤트
             Bus->>Notification: PostLiked 이벤트
@@ -773,11 +771,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts/Reposts)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
     participant Notification as Notification
 
     Client->>APIGW: POST /api/v1/posts/{post_id}/share
@@ -788,7 +786,7 @@ sequenceDiagram
         APIGW->>Post: 공유 요청
         Post->>DB: SELECT * FROM posts WHERE id = {post_id}
         DB-->>Post: 원본 게시물 데이터 반환
-        Post->>DB: INSERT INTO reposts(user_id, original_post_id, created_at) VALUES (...)
+        Post->>DB: INSERT INTO reposts (user_id, original_post_id, created_at) VALUES (...)
         DB-->>Post: 201 Created + { share_id }
         Post->>Bus: publish PostShared 이벤트
         Bus->>Notification: PostShared 이벤트
@@ -803,11 +801,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
     participant Search as Search
     participant OpenSearch as OpenSearch Cluster
 
@@ -838,11 +836,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts/Bookmarks)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     opt 게시물 북마크 추가
         Client->>APIGW: POST /api/v1/posts/{post_id}/bookmark
@@ -854,7 +852,7 @@ sequenceDiagram
             Post->>DB: SELECT COUNT(*) FROM bookmarks WHERE user_id = key.sub AND post_id = {post_id}
             DB-->>Post: 중복 여부 반환
             alt 중복 없음
-                Post->>DB: INSERT INTO bookmarks(user_id, post_id, created_at) VALUES(...)
+                Post->>DB: INSERT INTO bookmarks (user_id, post_id, created_at) VALUES (...)
                 DB-->>Post: 201 Created
                 Post->>Bus: publish PostBookmarked 이벤트
                 Post-->>APIGW: 204 No Content
@@ -885,11 +883,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant Redis as Redis Cache(ViewCounters)
-    participant DB as PostgreSQL(Stats)
+    participant Redis as Redis Cache
+    participant DB as PostgreSQL
 
     Client->>APIGW: GET /api/v1/posts/{post_id}/stats
     APIGW->>Auth: JWT 검증
@@ -913,12 +911,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts)
-    participant Cache as Redis Cache(BlockList)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Cache as Redis Cache
+    participant Bus as Message Bus
     participant Moderation as Moderation
 
     Client->>APIGW: POST /api/v1/posts/{post_id}/reports (body: { reasons, block })
@@ -945,13 +943,13 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant Cache as Redis Cache(FilterRules)
+    participant Cache as Redis Cache
     participant Moderation as Moderation
-    participant DB as PostgreSQL(Posts)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     opt 게시물 작성 시 필터링
         Client->>APIGW: POST /api/v1/posts (body: { content, media, poll })
@@ -1011,11 +1009,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Post as Post
-    participant DB as PostgreSQL(Posts/Follow)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
     participant Notification as Notification
 
     Client->>APIGW: POST /api/v1/posts (body: { content, media, poll })
@@ -1045,7 +1043,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Search as Search
     participant OpenSearch as OpenSearch Cluster
@@ -1070,12 +1068,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
     participant Media as Media
-    participant DB as PostgreSQL(Comments)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     Client->>APIGW: POST /api/v1/posts/{post_id}/comments (body: { content, media, video })
     APIGW->>Auth: JWT 검증
@@ -1100,10 +1098,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
-    participant DB as PostgreSQL(Comments)
+    participant DB as PostgreSQL
 
     Client->>APIGW: GET /api/v1/posts/{post_id}/comments?sort={latest|popular}&page={page}&size={size}
     APIGW->>Auth: JWT 검증
@@ -1127,12 +1125,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
     participant Media as Media
-    participant DB as PostgreSQL(Comments)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     Client->>APIGW: PATCH /api/v1/posts/{post_id}/comments/{comment_id} (body: { content, media })
     APIGW->>Auth: JWT 검증
@@ -1177,11 +1175,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
-    participant DB as PostgreSQL(Comments)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     Client->>APIGW: DELETE /api/v1/posts/{post_id}/comments/{comment_id}
     APIGW->>Auth: JWT 검증
@@ -1193,6 +1191,10 @@ sequenceDiagram
         DB-->>Comment: author_id 반환
         alt 작성자 일치
             Comment->>DB: DELETE FROM comments WHERE id = {comment_id}
+            par 대댓글 및 좋아요 삭제
+                Comment->>DB: DELETE FROM comments WHERE parent_id = {comment_id}
+                Comment->>DB: DELETE FROM comment_likes WHERE comment_id = {comment_id}
+            end
             DB-->>Comment: 204 No Content
             Comment->>Bus: publish CommentDeleted 이벤트
             Comment-->>APIGW: 204 No Content
@@ -1208,12 +1210,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
     participant Media as Media
-    participant DB as PostgreSQL(Comments)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
 
     opt 대댓글 작성
         Client->>APIGW: POST /api/v1/posts/{post_id}/comments/{comment_id}/replies (body: { content, media })
@@ -1258,11 +1260,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
-    participant DB as PostgreSQL(Comments/Likes)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Bus as Message Bus
     participant Notification as Notification
 
     Client->>APIGW: POST /api/v1/comments/{comment_id}/like
@@ -1274,7 +1276,7 @@ sequenceDiagram
         Comment->>DB: SELECT COUNT(*) FROM comment_likes WHERE user_id = key.sub AND comment_id = {comment_id}
         DB-->>Comment: 중복 여부 반환
         alt 중복 없음
-            Comment->>DB: INSERT INTO comment_likes(user_id, comment_id)
+            Comment->>DB: INSERT INTO comment_likes (user_id, comment_id)
             DB-->>Comment: 201 Created
             Comment->>Bus: publish CommentLiked 이벤트
             Bus->>Notification: CommentLiked 이벤트
@@ -1292,12 +1294,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
-    participant DB as PostgreSQL(Comments/Reports)
-    participant Cache as Redis Cache(BlockList)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DB as PostgreSQL
+    participant Cache as Redis Cache
+    participant Bus as Message Bus
     participant Moderation as Moderation
 
     Client->>APIGW: POST /api/v1/comments/{comment_id}/reports (body: { reasons, block })
@@ -1324,12 +1326,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
-    participant Cache as Redis Cache(FilterRules)
+    participant Cache as Redis Cache
     participant Moderation as Moderation
-    participant DB as PostgreSQL(Comments)
+    participant DB as PostgreSQL
 
     opt 댓글 작성 시 필터링
         Client->>APIGW: POST /api/v1/posts/{post_id}/comments (body: { content, media })
@@ -1389,14 +1391,14 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Comment as Comment
-    participant DBComments as PostgreSQL(Comments)
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant DBComments as PostgreSQL
+    participant Bus as Message Bus
     participant Notification as Notification
-    participant DBPosts as PostgreSQL(Posts)
-    participant DBFollow as PostgreSQL(Profile)
+    participant DBPosts as PostgreSQL
+    participant DBFollow as PostgreSQL
 
     Client->>APIGW: POST /api/v1/posts/{post_id}/comments
     APIGW->>Auth: JWT 검증
@@ -1430,7 +1432,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Feed as Feed
     participant Redis as Redis Cache
@@ -1448,7 +1450,7 @@ sequenceDiagram
         else 캐시 미스
             Feed->>Redis: SMEMBERS followings:{user_id}
             Redis-->>Feed: 팔로잉 사용자 목록
-            Feed->>Cassandra: SELECT * FROM feed_posts WHERE author_id IN (…)\nORDER BY created_at DESC LIMIT {size} OFFSET {(page–1)×size}
+            Feed->>Cassandra: SELECT * FROM feed_posts WHERE author_id IN (…) ORDER BY created_at DESC LIMIT {size} OFFSET {(page–1)×size}
             Cassandra-->>Feed: 피드 데이터 반환
             Feed->>Redis: SET feed:following:{user_id}:{page} = 피드 데이터 PX 60000
         end
@@ -1462,7 +1464,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Feed as Feed
     participant Redis as Redis Cache
@@ -1492,7 +1494,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Feed as Feed
     participant Redis as Redis Cache
@@ -1508,7 +1510,7 @@ sequenceDiagram
         alt 캐시 히트
             Redis-->>Feed: 캐시된 피드 반환
         else 캐시 미스
-            Feed->>Cassandra: SELECT * FROM feed_hashtag_posts\nWHERE hashtag = {tag}\nORDER BY created_at DESC\nLIMIT {size} OFFSET {(page-1)×size}
+            Feed->>Cassandra: SELECT * FROM feed_hashtag_posts WHERE hashtag = {tag} ORDER BY created_at DESC LIMIT {size} OFFSET {(page-1)×size}
             Cassandra-->>Feed: 피드 데이터 반환
             Feed->>Redis: SET feed:hashtag:{tag}:{page} = 피드 데이터 PX 60000
         end
@@ -1522,7 +1524,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Feed as Feed
     participant Redis as Redis Cache
@@ -1562,7 +1564,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Realtime as Realtime
     participant Redis as Redis Pub/Sub
@@ -1576,13 +1578,11 @@ sequenceDiagram
             Auth-->>APIGW: 401 Unauthorized
             APIGW-->>Client: 연결 거부
         else 인증 성공
-            Auth-->>APIGW: 200 OK
             APIGW->>Realtime: WebSocket 핸드셰이크 전달
             Realtime->>Redis: SUBSCRIBE feed:updates:{user_id}
             Realtime-->>Client: 연결 성공
         end
     end
-
     opt 실시간 업데이트
         Feed->>Bus: FeedUpdated 이벤트 발행
         Bus->>Realtime: FeedUpdated 전달
@@ -1595,11 +1595,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Recommendation as Recommendation
-    participant Redis as Redis Cache(RecommendCache)
-    participant DB as PostgreSQL(Auth/Profile)
+    participant Redis as Redis Cache
+    participant DB as PostgreSQL
 
     Client->>APIGW: GET /api/v1/users/recommend?page={page}&size={size}
     APIGW->>Auth: JWT 검증
@@ -1625,11 +1625,11 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Feed as Feed
-    participant Redis as Redis Cache(HashtagCounters)
-    participant Bus as Message Bus (Kafka/RabbitMQ/Redis)
+    participant Redis as Redis Cache
+    participant Bus as Message Bus
 
     Client->>APIGW: GET /api/v1/hashtags/popular?page={page}&size={size}
     APIGW->>Auth: JWT 검증
@@ -1654,12 +1654,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Feed as Feed
-    participant FeedCache as Redis Cache(FeedCache)
-    participant Cassandra as Cassandra(Feed)
-    participant FilterCache as Redis Cache(FilterRules)
+    participant FeedCache as Redis Cache
+    participant Cassandra as Cassandra
+    participant FilterCache as Redis Cache
     participant Moderation as Moderation
 
     Client->>APIGW: GET /api/v1/feed/following?page={page}&size={size}
@@ -1694,7 +1694,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as Client
-    participant APIGW as API Gateway(Nginx Ingress)
+    participant APIGW as API Gateway
     participant Auth as Auth
     participant Search as Search
     participant OpenSearch as OpenSearch Cluster
@@ -1717,9 +1717,9 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Feed as Feed
-    participant Bus as Message Bus(Kafka/RabbitMQ/Redis)
+    participant Bus as Message Bus
     participant Notification as Notification
-    participant DB as PostgreSQL(UserDevices)
+    participant DB as PostgreSQL
 
     opt 피드 업데이트 처리
         Bus->>Feed: PostCreated 이벤트
