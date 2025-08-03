@@ -1,9 +1,104 @@
 version: '3.8'
 
 services:
+  nginx:
+    image: nginx:stable-alpine
+    container_name: veilgram_nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/:/etc/nginx/conf.d/:ro
+      - ./nginx/certs/:/etc/nginx/certs/:ro
+      - web_static:/usr/share/nginx/html/static:ro
+      - web_media:/usr/share/nginx/html/media:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+    networks:
+      - veilgram-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      retries: 3
+
   web:
     build: .
+    container_name: veilgram_web
+    env_file:
+      - .env
     volumes:
-      - .:/app
+      - web_static:/app/static
+      - web_media:/app/media
+    expose:
+      - "8000"
+    depends_on:
+      - db
+      - redis
+      - minio
+    networks:
+      - veilgram-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      retries: 3
+
+  db:
+    image: postgres:15-alpine
+    container_name: veilgram_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - veilgram-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:6-alpine
+    container_name: veilgram_redis
+    env_file:
+      - .env
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - veilgram-net
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: veilgram_minio
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
     ports:
-      - "8000:8000"
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - veilgram-net
+    restart: unless-stopped
+
+volumes:
+  web_static:
+  web_media:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  veilgram-net:
+    driver: bridge
