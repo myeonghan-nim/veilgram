@@ -17,5 +17,8 @@ COPY veilgram ./veilgram/
 COPY entrypoint.sh .
 COPY manage.py .
 
+# Only for test
+COPY pytest.ini .
+
 RUN chmod +x entrypoint.sh
 ENTRYPOINT ["./entrypoint.sh"]
