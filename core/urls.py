@@ -1,8 +1,8 @@
 from rest_framework.routers import DefaultRouter
 
-from .views import SignupViewSet
+from .views import AuthViewSet
 
 router = DefaultRouter()
-router.register(r"auth", SignupViewSet, basename="auth")
+router.register(r"auth", AuthViewSet, basename="auth")
 
 urlpatterns = router.urls
