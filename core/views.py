@@ -1,44 +1,43 @@
+import uuid, secrets
+
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
-from .models import User
-from .serializers import SignupSerializer
+from .models import User, DeviceCredential
+from .serializers import SignupInputSerializer, SignupOutputSerializer, DeviceLoginSerializer
 
 
 class AuthViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
 
-    def get_serializer_class(self):
-        if self.action == "signup":
-            return SignupSerializer
-        if self.action == "login":
-            return TokenRefreshSerializer
-        if self.action == "refresh":
-            return TokenRefreshSerializer
-        raise ValueError("Invalid action")
-
     @action(detail=False, methods=["post"])
+    @transaction.atomic
     def signup(self, request):
+        serializer = SignupInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         user = User.objects.create_user()
-        refresh = RefreshToken.for_user(user)
-        data = self.get_serializer(instance=user).data
-        data.update({"access": str(refresh.access_token), "refresh": str(refresh)})
+        device_id = serializer.validated_data.get("device_id") or str(uuid.uuid4())
+        device_secret = secrets.token_urlsafe(32)
+        cred = DeviceCredential(user=user, device_id=device_id, is_active=True)
+        cred.set_secret(device_secret)
+        cred.save()
+
+        data = SignupOutputSerializer.build_response(user, device_id, device_secret)
         return Response(data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["post"])
     def login(self, request):
-        serializer = self.get_serializer(data=request.data)
-        try:
-            serializer.is_valid(raise_exception=True)
-        except (TokenError, InvalidToken) as e:
-            return Response({"detail": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        serializer = DeviceLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
@@ -46,6 +45,6 @@ class AuthViewSet(viewsets.GenericViewSet):
         serializer = TokenRefreshSerializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
-        except (TokenError, InvalidToken) as e:
+        except TokenError as e:
             return Response({"detail": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
