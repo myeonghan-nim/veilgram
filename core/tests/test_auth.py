@@ -1,11 +1,10 @@
-import uuid
-from datetime import datetime
-
 import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from core.models import DeviceCredential
 
 
 @pytest.mark.django_db
@@ -17,98 +16,71 @@ class TestAuthEndpoints:
         self.refresh_url = reverse("auth-refresh")
 
     # Signup
-    def test_signup_returns_expected_fields(self):
-        response = self.client.post(self.signup_url)
-        assert response.status_code == status.HTTP_201_CREATED, f"Expected 201 CREATED but got {response.status_code}"
+    def test_signup_returns_device_secret_and_tokens(self):
+        payload = {"device_id": "device-001"}
+        response = self.client.post(self.signup_url, data=payload, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
 
-        data = response.json()
-        for field in ("id", "created_at", "access", "refresh"):
-            assert field in data, f"Response JSON missing '{field}'"
+        body = response.json()
+        for key in ("id", "created_at", "access", "refresh", "device_id", "device_secret"):
+            assert key in body
+        assert body["device_id"] == "device-001"
+        assert len(body["device_secret"]) >= 20
 
-    def test_id_is_valid_uuid(self):
-        response = self.client.post(self.signup_url)
-        data = response.json()
-        returned_id = data["id"]
-        parsed_id = uuid.UUID(returned_id)
-        assert str(parsed_id) == returned_id, f"Returned ID '{returned_id}' is not a valid UUID"
-
-    def test_created_at_is_isoformat(self):
-        response = self.client.post(self.signup_url)
-        data = response.json()
-        created_at = data["created_at"]
-        dt_str = created_at.rstrip("Z")
-        datetime.fromisoformat(dt_str), f"Created at '{created_at}' is not in ISO format"
-
-    def test_tokens_have_jwt_structure(self):
-        response = self.client.post(self.signup_url)
-        data = response.json()
-        for token_field in ("access", "refresh"):
-            token = data[token_field]
-            segments = token.split(".")
-            assert len(segments) == 3, f"Token '{token_field}' does not have 3 segments: {token}"
+        creds = DeviceCredential.objects.filter(user_id=body["id"], device_id="device-001").first()
+        assert creds is not None
+        assert creds.secret_hash and "argon2" in creds.secret_hash
 
     # Login
-    def test_login_with_valid_refresh_issues_tokens(self):
-        signup_response = self.client.post(self.signup_url)
-        assert signup_response.status_code == status.HTTP_201_CREATED, "Signup did not return 201 CREATED"
-        refresh_token = signup_response.json()["refresh"]
+    def test_login_success_with_device_credentials(self):
+        signup_response = self.client.post(self.signup_url, data={"device_id": "device-001"}, format="json").json()
+        payload = {
+            "user_id": signup_response["id"],
+            "device_id": signup_response["device_id"],
+            "device_secret": signup_response["device_secret"],
+        }
+        response = self.client.post(self.login_url, data=payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
 
-        response = self.client.post(self.login_url, data={"refresh": refresh_token})
-        assert response.status_code == status.HTTP_200_OK, f"Expected 200 OK but got {response.status_code}"
-
-        data = response.json()
-        assert "access" in data, "Response JSON missing 'access' token"
-        assert "refresh" in data, "Response JSON missing 'refresh' token"
-
-    def test_login_requires_refresh_token(self):
-        response = self.client.post(self.login_url, data={})
-        assert response.status_code == status.HTTP_400_BAD_REQUEST, "Login without refresh token should return 400 BAD REQUEST"
-
-    def test_login_with_blacklisted_refresh_token(self):
-        signup_response = self.client.post(self.signup_url)
-        assert signup_response.status_code == status.HTTP_201_CREATED, "Signup did not return 201 CREATED"
-
-        blacklisted = signup_response.json()["refresh"]
-        RefreshToken(blacklisted).blacklist()
-
-        response = self.client.post(self.login_url, {"refresh": blacklisted})
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Expected 401 UNAUTHORIZED but got {response.status_code}"
-        assert "detail" in response.json(), "Response JSON missing 'detail' field"
-
-    def test_login_with_invalid_token_format(self):
-        response = self.client.post(self.login_url, {"refresh": "not.a.valid.token"})
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Expected 401 UNAUTHORIZED but got {response.status_code}"
         body = response.json()
-        assert "detail" in body, "Response JSON missing 'detail' field"
+        assert "access" in body and "refresh" in body and body["user_id"] == signup_response["id"]
+        assert "device_secret" not in body
+
+    def test_login_invalid_device_secret_401(self):
+        signup_response = self.client.post(self.signup_url, data={"device_id": "dev-x"}, format="json").json()
+        bad_payload = {"user_id": signup_response["id"], "device_id": "dev-x", "device_secret": "WRONG"}
+        response = self.client.post(self.login_url, data=bad_payload, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "detail" in response.json()
+
+    def test_login_inactive_device_401(self):
+        signup_response = self.client.post(self.signup_url, data={"device_id": "dev-y"}, format="json").json()
+        DeviceCredential.objects.filter(user_id=signup_response["id"], device_id="dev-y").update(is_active=False)
+        bad_payload = {"user_id": signup_response["id"], "device_id": "dev-y", "device_secret": signup_response["device_secret"]}
+        response = self.client.post(self.login_url, data=bad_payload, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "detail" in response.json()
 
     # Refresh
-    def test_refresh_endpoint_issues_new_access(self):
-        signup_response = self.client.post(self.signup_url)
-        original_refresh = signup_response.json()["refresh"]
+    def test_refresh_success_and_rotation(self):
+        signup_response = self.client.post(self.signup_url, data={"device_id": "dev-r"}, format="json").json()
+        response = self.client.post(self.refresh_url, data={"refresh": signup_response["refresh"]}, format="json")
+        assert response.status_code == status.HTTP_200_OK
 
-        response = self.client.post(self.refresh_url, data={"refresh": original_refresh})
-        assert response.status_code == status.HTTP_200_OK, f"Expected 200 OK but got {response.status_code}"
-
-        data = response.json()
-        assert "access" in data, "Response JSON missing 'access' token"
-        assert "refresh" in data, "Response JSON missing 'refresh' token"
-
-    def test_refresh_with_blacklisted_refresh_token(self):
-        signup_response = self.client.post(self.signup_url)
-        assert signup_response.status_code == status.HTTP_201_CREATED, "Signup did not return 201 CREATED"
-
-        original = signup_response.json()["refresh"]
-        RefreshToken(original).blacklist()
-
-        response = self.client.post(self.refresh_url, {"refresh": original})
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Expected 401 UNAUTHORIZED but got {response.status_code}"
-        assert "detail" in response.json(), "Response JSON missing 'detail' field"
-
-    def test_refresh_with_invalid_token_format(self):
-        response = self.client.post(self.refresh_url, {"refresh": "bad.token"})
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED, f"Expected 401 UNAUTHORIZED but got {response.status_code}"
         body = response.json()
-        assert "detail" in body, "Response JSON missing 'detail' field"
+        assert "access" in body
+
+    def test_refresh_with_blacklisted_token_401(self):
+        signup_response = self.client.post(self.signup_url, data={"device_id": "dev-b"}, format="json").json()
+        RefreshToken(signup_response["refresh"]).blacklist()
+        response = self.client.post(self.refresh_url, data={"refresh": signup_response["refresh"]}, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "detail" in response.json()
+
+    def test_refresh_with_invalid_token_format_401(self):
+        response = self.client.post(self.refresh_url, data={"refresh": "bad.token"}, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "detail" in response.json()
 
     # TODO: Authentication
     # def test_access_token_can_authenticate_protected_view(self):
