@@ -54,3 +54,15 @@ class DeviceLoginSerializer(serializers.Serializer):
             "refresh": str(refresh),
             "user_id": str(user_id),
         }
+
+
+class LogoutSerializer(serializers.Serializer):
+    all_logout = serializers.BooleanField(required=False, default=False)
+    refresh = serializers.CharField(required=False, allow_blank=False)
+
+    def validate(self, attrs):
+        all_flag = attrs.get("all_logout", False)
+        refresh = attrs.get("refresh")
+        if not all_flag and not refresh:
+            raise serializers.ValidationError({"refresh": "This field is required when all_logout is false."})
+        return attrs
