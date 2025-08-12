@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -60,6 +61,49 @@ class TestAuthEndpoints:
         res = self.client.post(self.login_url, data={"user_id": s["id"], "device_id": s["device_id"], "device_secret": s["device_secret"]}, format="json")
         assert res.status_code == status.HTTP_401_UNAUTHORIZED
         assert "detail" in res.json()
+
+    # Login with single device enforcement
+    def test_same_device_relogin_keeps_old_refresh_valid(self):
+        s = self._signup_user("A-1").json()
+        user_id, device_id, secret, old_refresh = s["id"], s["device_id"], s["device_secret"], s["refresh"]
+
+        self._login_user(user_id, device_id, secret)
+        ok = self.client.post(self.refresh_url, data={"refresh": old_refresh}, format="json")
+        assert ok.status_code == status.HTTP_200_OK
+        assert "access" in ok.json()
+
+        key = f"sessions:{user_id}"
+        assert cache.get(key) == device_id
+
+    def test_login_from_other_device_revokes_old_refresh(self):
+        s = self._signup_user("A-1").json()
+        user_id, refresh_a1 = s["id"], s["refresh"]
+
+        dev_b = DeviceCredential(user_id=user_id, device_id="B-1", is_active=True)
+        dev_b.set_secret("SECRET_B1")
+        dev_b.save()
+
+        login_b = self._login_user(user_id, "B-1", "SECRET_B1").json()
+        assert "access" in login_b and "refresh" in login_b
+
+        bad = self.client.post(self.refresh_url, data={"refresh": refresh_a1}, format="json")
+        assert bad.status_code == status.HTTP_401_UNAUTHORIZED
+
+        key = f"sessions:{user_id}"
+        assert cache.get(key) == "B-1"
+
+    def test_other_user_is_not_affected(self):
+        s_a = self._signup_user("UA-1").json()
+        s_b = self._signup_user("UB-1").json()
+
+        dev_a2 = DeviceCredential(user_id=s_a["id"], device_id="UA-2", is_active=True)
+        dev_a2.set_secret("A2_SECRET")
+        dev_a2.save()
+        self._login_user(s_a["id"], "UA-2", "A2_SECRET")
+
+        res = self.client.post(self.refresh_url, data={"refresh": s_b["refresh"]}, format="json")
+        assert res.status_code == status.HTTP_200_OK
+        assert "access" in res.json()
 
     # Refresh
     def test_refresh_success_and_rotation(self):
@@ -141,9 +185,9 @@ class TestAuthEndpoints:
         res = self.client.post(self.logout_url, data={"all_logout": True}, format="json")
         assert res.status_code == status.HTTP_204_NO_CONTENT
 
-        ok = self.client.post(self.refresh_url, data={"refresh": refresh_b}, format="json")
-        assert ok.status_code == status.HTTP_200_OK
-        assert "access" in ok.json()
+        res = self.client.post(self.refresh_url, data={"refresh": refresh_b}, format="json")
+        assert res.status_code == status.HTTP_200_OK
+        assert "access" in res.json()
 
     # TODO: Authentication
     # def test_access_token_can_authenticate_protected_view(self):
