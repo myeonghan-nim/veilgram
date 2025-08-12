@@ -107,8 +107,11 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
+        "KEY_PREFIX": "veilgram",
     }
 }
+
+SESSION_LIMIT_ONE_DEVICE = True
 
 
 # Media Storage
@@ -191,6 +194,7 @@ SIMPLE_JWT = {
 
 
 # Password hashing
+
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
