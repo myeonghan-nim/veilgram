@@ -13,6 +13,7 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, Bl
 
 from .models import User, DeviceCredential
 from .serializers import SignupInputSerializer, SignupOutputSerializer, DeviceLoginSerializer, LogoutSerializer
+from .services.session import enforce_single_device_session
 
 
 class AuthViewSet(viewsets.GenericViewSet):
@@ -32,6 +33,8 @@ class AuthViewSet(viewsets.GenericViewSet):
         cred.set_secret(device_secret)
         cred.save()
 
+        enforce_single_device_session(user, device_id)
+
         data = SignupOutputSerializer.build_response(user, device_id, device_secret)
         return Response(data, status=status.HTTP_201_CREATED)
 
@@ -39,7 +42,19 @@ class AuthViewSet(viewsets.GenericViewSet):
     def login(self, request):
         s = DeviceLoginSerializer(data=request.data)
         s.is_valid(raise_exception=True)
-        return Response(s.validated_data, status=status.HTTP_200_OK)
+
+        user = s.validated_data["user"]
+        device_id = s.validated_data["device_id"]
+
+        enforce_single_device_session(user, device_id)
+        refresh = RefreshToken.for_user(user)
+        data = {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user_id": str(user.id),
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
     def refresh(self, request):

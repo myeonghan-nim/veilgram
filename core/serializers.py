@@ -47,13 +47,8 @@ class DeviceLoginSerializer(serializers.Serializer):
         if not device or not device.verify_secret(device_secret):
             raise AuthenticationFailed("Invalid device credential")
 
-        refresh = RefreshToken.for_user(device.user)
-        DeviceCredential.objects.filter(pk=device.pk).update()
-        return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-            "user_id": str(user_id),
-        }
+        attrs["user"] = device.user
+        return attrs
 
 
 class LogoutSerializer(serializers.Serializer):
