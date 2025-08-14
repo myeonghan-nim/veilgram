@@ -1,0 +1,69 @@
+from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+from rest_framework import viewsets, mixins, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from .models import Profile
+from .serializers import ProfileReadSerializer, ProfileCreateSerializer, ProfileUpdateSerializer
+from .permissions import IsOwnerOrReadOnlyProfile
+from .services.validators import ForbiddenNicknameService, normalize_nickname
+
+User = get_user_model()
+
+
+class ProfileViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin):
+    queryset = Profile.objects.select_related("user")
+    serializer_class = ProfileReadSerializer
+    permission_classes = [IsOwnerOrReadOnlyProfile]
+    lookup_field = "user_id"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return ProfileCreateSerializer
+        if self.action in ("partial_update_me", "update_me", "me"):
+            return ProfileUpdateSerializer if self.request.method != "GET" else ProfileReadSerializer
+        return ProfileReadSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"], url_path="me", permission_classes=[IsAuthenticated])
+    def me(self, request):
+        prof = get_object_or_404(Profile, user=request.user)
+        return Response(ProfileReadSerializer(prof).data)
+
+    @me.mapping.patch
+    def partial_update_me(self, request):
+        prof = get_object_or_404(Profile, user=request.user)
+        s = ProfileUpdateSerializer(prof, data=request.data, partial=True, context={"request": request})
+        s.is_valid(raise_exception=True)
+        obj = s.save()
+        return Response(ProfileReadSerializer(obj).data)
+
+    @me.mapping.delete
+    def delete_me(self, request):
+        prof = get_object_or_404(Profile, user=request.user)
+        prof.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["get"], url_path="availability", permission_classes=[IsAuthenticated])
+    def availability(self, request):
+        nickname = request.query_params.get("nickname") or ""
+        reasons = []
+        candidate = normalize_nickname(nickname)
+        if not candidate or not (2 <= len(candidate) <= 20):
+            reasons.append("Type Error(Length)")
+
+        from .services.validators import NICKNAME_REGEX
+
+        if not NICKNAME_REGEX.match(candidate):
+            reasons.append("Type Error(Format)")
+        words = ForbiddenNicknameService.load()
+        if candidate.lower() in words or any(w in candidate.lower() for w in words):
+            reasons.append("Forbidden Word Included")
+        exists = Profile.objects.filter(nickname__iexact=candidate).exists()
+        if exists:
+            reasons.append("Duplicate Nickname")
+        return Response({"nickname": candidate, "available": len(reasons) == 0, "reasons": reasons})
