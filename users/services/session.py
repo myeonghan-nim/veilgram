@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.cache import cache
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
-from core.models import DeviceCredential
+from users.models import DeviceCredential
 
 
 def _session_key(user_id: str) -> str:

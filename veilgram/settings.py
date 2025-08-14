@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "storages",
-    "core",
+    "users",
 ]
 
 MIDDLEWARE = [
@@ -174,7 +174,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # User model
 
-AUTH_USER_MODEL = "core.User"
+AUTH_USER_MODEL = "users.User"
 
 
 # REST framework

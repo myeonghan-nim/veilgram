@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from core.models import DeviceCredential
+from users.models import DeviceCredential
 
 
 @pytest.mark.django_db
