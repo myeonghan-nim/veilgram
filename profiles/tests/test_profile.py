@@ -88,7 +88,7 @@ class TestProfileAPI:
         u = self._make_user()
         assert self._create_profile(u, "Bob").status_code == 201
 
-        res = self._request("get", f"{self.BASE}/{u.id}")
+        res = self._request("get", f"{self.BASE}/{u.id}", user=u)
         assert res.status_code == 200
         assert self._json(res)["nickname"] == "Bob"
 
