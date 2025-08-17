@@ -9,7 +9,7 @@ User = get_user_model()
 
 @pytest.mark.django_db
 class TestProfileAPICountsAndBlocks:
-    BASE = "/api/v1/profile"
+    BASE = "/api/v1/profiles"
 
     @pytest.fixture(autouse=True)
     def _setup(self, db):
