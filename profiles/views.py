@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.db.models import Count, Exists, OuterRef
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -9,6 +10,7 @@ from .models import Profile
 from .serializers import ProfileReadSerializer, ProfileCreateSerializer, ProfileUpdateSerializer
 from .permissions import IsOwnerOrReadOnlyProfile
 from .services.validators import ForbiddenNicknameService, normalize_nickname
+from relations.models import Follow, Block
 
 User = get_user_model()
 
@@ -18,6 +20,19 @@ class ProfileViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.Re
     serializer_class = ProfileReadSerializer
     permission_classes = [IsOwnerOrReadOnlyProfile]
     lookup_field = "user_id"
+
+    def get_queryset(self):
+        qs = Profile.objects.select_related("user").annotate(follower_count=Count("user__followers", distinct=True), following_count=Count("user__following", distinct=True))
+
+        user = getattr(self.request, "user", None)
+        if user and user.is_authenticated:
+            qs = qs.annotate(
+                is_following=Exists(Follow.objects.filter(follower_id=user.id, following_id=OuterRef("user_id"))),
+                is_followed_by=Exists(Follow.objects.filter(follower_id=OuterRef("user_id"), following_id=user.id)),
+                is_blocked_by_me=Exists(Block.objects.filter(user_id=user.id, blocked_user_id=OuterRef("user_id"))),
+                has_blocked_me=Exists(Block.objects.filter(user_id=OuterRef("user_id"), blocked_user_id=user.id)),
+            )
+        return qs
 
     def get_serializer_class(self):
         if self.action == "create":

@@ -57,3 +57,22 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         except IntegrityError:
             raise serializers.ValidationError({"nickname": "Already taken nickname."})
         return instance
+
+
+class ProfileReadSerializer(serializers.ModelSerializer):
+    user_id = serializers.UUIDField(read_only=True)
+    follower_count = serializers.IntegerField(read_only=True)
+    following_count = serializers.IntegerField(read_only=True)
+    relations = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Profile
+        fields = ("id", "user_id", "nickname", "status_message", "follower_count", "following_count", "relations", "created_at", "updated_at")
+
+    def get_relations(self, obj):
+        return {
+            "is_following": bool(getattr(obj, "is_following", False)),
+            "is_followed_by": bool(getattr(obj, "is_followed_by", False)),
+            "is_blocked_by_me": bool(getattr(obj, "is_blocked_by_me", False)),
+            "has_blocked_me": bool(getattr(obj, "has_blocked_me", False)),
+        }
