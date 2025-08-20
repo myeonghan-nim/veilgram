@@ -13,6 +13,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY profiles ./profiles/
+COPY polls ./polls/
+COPY posts ./posts/
 COPY relations ./relations/
 COPY users ./users/
 COPY veilgram ./veilgram/
