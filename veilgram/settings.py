@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "storages",
+    "assets",
     "polls",
     "posts",
     "profiles",
@@ -127,6 +128,17 @@ AWS_SECRET_ACCESS_KEY = env("MINIO_ROOT_PASSWORD")
 AWS_STORAGE_BUCKET_NAME = "media"
 AWS_S3_USE_SSL = False
 AWS_S3_REGION_NAME = ""
+
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+AWS_S3_ADDRESSING_STYLE = "path"
+AWS_QUERYSTRING_AUTH = False
+
+ASSET_LIMITS = {
+    "IMAGE_MAX_BYTES": 10 * 1024 * 1024,  # 10MB
+    "VIDEO_MAX_BYTES": 200 * 1024 * 1024,  # 200MB
+    "IMAGE_MIME_WHITELIST": {"image/jpeg", "image/png"},
+    "VIDEO_MIME_WHITELIST": {"video/mp4"},
+}
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
