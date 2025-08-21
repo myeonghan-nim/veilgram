@@ -24,4 +24,5 @@ urlpatterns = [
     path("api/v1/", include("profiles.urls")),
     path("api/v1/", include("relations.urls")),
     path("api/v1/", include("assets.urls")),
+    path("api/v1/", include("polls.urls")),
 ]
