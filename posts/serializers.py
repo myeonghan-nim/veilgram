@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from assets.serializers import AssetOut
+from polls.models import Poll
 from polls.serializers import PollCreateIn
 
 
@@ -32,3 +34,37 @@ class PostOut(serializers.Serializer):
     id = serializers.UUIDField()
     author = serializers.UUIDField(source="author_id")
     created_at = serializers.DateTimeField()
+
+
+class PollOptionLite(serializers.Serializer):
+    id = serializers.UUIDField()
+    text = serializers.CharField()
+    position = serializers.IntegerField()
+    vote_count = serializers.IntegerField()
+
+
+class PollWithMyOut(serializers.ModelSerializer):
+    # Poll + 옵션 + 내가 고른 선택지(my_option_id)까지 포함해 반환하며, 'my_option_id'는 뷰에서 prefetch된 poll.my_votes[0]을 사용(없으면 None)
+    options = PollOptionLite(many=True, read_only=True, source="options.all")
+    owner = serializers.UUIDField(source="owner_id", read_only=True)
+    my_option_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Poll
+        fields = ["id", "owner", "allow_multiple", "options", "my_option_id"]
+
+    def get_my_option_id(self, obj):
+        # 뷰에서 Prefetch(to_attr='my_votes')로 넣어준 컬렉션 사용
+        mv = getattr(obj, "my_votes", None)
+        if mv:
+            return str(mv[0].option_id)
+        return None
+
+
+class PostDetailOut(serializers.Serializer):
+    id = serializers.UUIDField()
+    author = serializers.UUIDField(source="author_id")
+    content = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    assets = AssetOut(many=True, source="assets.all")  # assets 앱의 직렬화 재사용
+    poll = PollWithMyOut(allow_null=True)
