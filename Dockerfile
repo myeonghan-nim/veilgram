@@ -13,6 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY assets ./assets/
+COPY comments ./comments/
 COPY profiles ./profiles/
 COPY polls ./polls/
 COPY posts ./posts/
