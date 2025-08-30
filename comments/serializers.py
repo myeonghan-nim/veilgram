@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import Comment
+from assets.serializers import AssetOut
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -14,11 +15,12 @@ class CommentSerializer(serializers.ModelSerializer):
             "required": "Content must not be empty.",
         },
     )
+    assets = AssetOut(many=True, read_only=True)
 
     class Meta:
         model = Comment
-        fields = ["id", "post", "user", "author", "parent", "content", "created_at", "updated_at"]
-        read_only_fields = ["id", "user", "created_at", "updated_at", "post"]
+        fields = ["id", "post", "user", "author", "parent", "content", "assets", "created_at", "updated_at"]
+        read_only_fields = ["id", "user", "created_at", "updated_at", "post", "assets"]
 
     def _get_post_from_context(self):
         # 1) 명시적으로 주입된 post
