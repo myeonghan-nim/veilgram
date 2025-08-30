@@ -223,3 +223,10 @@ PASSWORD_HASHERS = [
 POST_LIMITS = {
     "MAX_ATTACHMENTS": 10,
 }
+
+
+# Moderation settings
+
+MODERATION_ENABLED = True
+MODERATION_BLOCKED_WORDS = {"spam", "abuse", "badword"}
+NSFW_CHECK_ENABLED = True
