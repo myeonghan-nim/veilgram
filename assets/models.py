@@ -18,8 +18,10 @@ class AssetStatus(models.TextChoices):
 class Asset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="assets", db_index=True)
-    # 11일차에 Post와 연결(현 시점은 nullable)
+    # 11일차: Post와 연결(현 시점은 nullable)
     post = models.ForeignKey("posts.Post", on_delete=models.SET_NULL, related_name="assets", null=True, blank=True)
+    # 14일차: Comment와 연결(추가) — Post와 동시에 연결 금지
+    comment = models.ForeignKey("comments.Comment", on_delete=models.SET_NULL, related_name="assets", null=True, blank=True)
 
     type = models.CharField(max_length=10, choices=AssetType.choices)
     content_type = models.CharField(max_length=64)
@@ -35,7 +37,7 @@ class Asset(models.Model):
 
     width = models.IntegerField(null=True, blank=True)
     height = models.IntegerField(null=True, blank=True)
-    duration = models.FloatField(null=True, blank=True)  # seconds
+    duration = models.FloatField(null=True, blank=True)
 
     class Meta:
         db_table = "assets"
@@ -43,7 +45,15 @@ class Asset(models.Model):
         indexes = [
             models.Index(fields=["owner", "-created_at"], name="idx_asset_owner_created"),
             models.Index(fields=["post"], name="idx_asset_post"),
+            models.Index(fields=["comment"], name="idx_asset_comment"),
             models.Index(fields=["status"], name="idx_asset_status"),
+        ]
+        constraints = [
+            # 둘 다 연결 금지(동시에 post, comment 설정 금지) — PENDING 단계(둘 다 None)는 허용
+            models.CheckConstraint(
+                name="asset_not_both_post_and_comment",
+                check=~(models.Q(post__isnull=False) & models.Q(comment__isnull=False)),
+            ),
         ]
 
     def __str__(self):
