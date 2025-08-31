@@ -12,7 +12,7 @@ from .models import Post
 from .paginations import PostCursorPagination
 from .serializers import PostCreateIn, PostOut, PostDetailOut
 from .services import create_post
-from polls.models import Vote, Poll
+from polls.models import Vote
 
 
 class PostViewSet(viewsets.GenericViewSet):
