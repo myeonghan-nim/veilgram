@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .models import Bookmark, Repost
 from assets.serializers import AssetOut
 from polls.models import Poll
 from polls.serializers import PollCreateIn
@@ -68,3 +69,20 @@ class PostDetailOut(serializers.Serializer):
     created_at = serializers.DateTimeField()
     assets = AssetOut(many=True, source="assets.all")  # assets 앱의 직렬화 재사용
     poll = PollWithMyOut(allow_null=True)
+
+
+class BookmarkOut(serializers.ModelSerializer):
+    post_id = serializers.UUIDField(read_only=True)
+
+    class Meta:
+        model = Bookmark
+        fields = ("id", "post_id", "created_at")
+
+
+class RepostOut(serializers.ModelSerializer):
+    original_post_id = serializers.UUIDField(read_only=True)
+    sharer_id = serializers.UUIDField(source="user_id", read_only=True)
+
+    class Meta:
+        model = Repost
+        fields = ("id", "original_post_id", "sharer_id", "created_at")
