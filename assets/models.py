@@ -18,9 +18,7 @@ class AssetStatus(models.TextChoices):
 class Asset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="assets", db_index=True)
-    # 11일차: Post와 연결(현 시점은 nullable)
     post = models.ForeignKey("posts.Post", on_delete=models.SET_NULL, related_name="assets", null=True, blank=True)
-    # 14일차: Comment와 연결(추가) — Post와 동시에 연결 금지
     comment = models.ForeignKey("comments.Comment", on_delete=models.SET_NULL, related_name="assets", null=True, blank=True)
 
     type = models.CharField(max_length=10, choices=AssetType.choices)
