@@ -230,3 +230,8 @@ POST_LIMITS = {
 MODERATION_ENABLED = True
 MODERATION_BLOCKED_WORDS = {"spam", "abuse", "badword"}
 NSFW_CHECK_ENABLED = True
+
+
+# Events emitter
+
+RELATIONS_EVENT_EMITTER = "relations.events.logging_emitter"
