@@ -1,4 +1,3 @@
-from __future__ import annotations
 from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model
@@ -7,6 +6,8 @@ from django.db.models import Q
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from .models import Follow, Block
+from .events import emit_user_followed, emit_user_unfollowed, emit_user_blocked, emit_user_unblocked
+
 
 User = get_user_model()
 
@@ -40,9 +41,10 @@ class RelationshipService:
     def follow(actor, target) -> RelationResult:
         RelationshipService._validate_not_self(actor, target)
         RelationshipService._ensure_not_blocked(actor, target)
-        obj, created = Follow.objects.get_or_create(follower=actor, following=target)
+        _, created = Follow.objects.get_or_create(follower=actor, following=target)
         if not created:
             raise ValidationError({"detail": "Already following."})
+        emit_user_followed(actor.id, target.id)
         return RelationResult(changed=True)
 
     @staticmethod
@@ -52,17 +54,23 @@ class RelationshipService:
         deleted, _ = Follow.objects.filter(follower=actor, following=target).delete()
         if deleted == 0:
             raise ValidationError({"detail": "Not following."})
+        emit_user_unfollowed(actor.id, target.id)
         return RelationResult(changed=True)
 
     @staticmethod
     @transaction.atomic
     def block(actor, target) -> RelationResult:
         RelationshipService._validate_not_self(actor, target)
-        obj, created = Block.objects.get_or_create(user=actor, blocked_user=target)
+        _, created = Block.objects.get_or_create(user=actor, blocked_user=target)
         if not created:
             raise ValidationError({"detail": "Already blocked."})
         # 양방향 팔로우 모두 제거
+        removed = list(Follow.objects.filter(Q(follower=actor, following=target) | Q(follower=target, following=actor)).values_list("follower_id", "following_id"))
         Follow.objects.filter(Q(follower=actor, following=target) | Q(follower=target, following=actor)).delete()
+        emit_user_blocked(actor.id, target.id)
+        # 자동 언팔로우된 관계에 대해서도 이벤트
+        for f_id, g_id in removed:
+            emit_user_unfollowed(f_id, g_id)
         return RelationResult(changed=True)
 
     @staticmethod
@@ -72,4 +80,5 @@ class RelationshipService:
         deleted, _ = Block.objects.filter(user=actor, blocked_user=target).delete()
         if deleted == 0:
             raise ValidationError({"detail": "Not blocked."})
+        emit_user_unblocked(actor.id, target.id)
         return RelationResult(changed=True)
