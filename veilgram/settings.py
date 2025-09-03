@@ -52,10 +52,12 @@ INSTALLED_APPS = [
     "storages",
     "assets",
     "comments",
+    "hashtags",
     "polls",
     "posts",
     "profiles",
     "relations",
+    "search",
     "users",
 ]
 
@@ -235,3 +237,22 @@ NSFW_CHECK_ENABLED = True
 # Events emitter
 
 RELATIONS_EVENT_EMITTER = "relations.events.logging_emitter"
+
+
+# OpenSearch
+
+OPENSEARCH = {
+    # 기능 토글: false면 테스트/로컬에서 In-Memory 백엔드 사용
+    "ENABLED": env.bool("OPENSEARCH_ENABLED", default=False),
+    # 쉼표(,)로 구분된 호스트 목록: http://opensearch:9200,http://opensearch2:9200
+    "HOSTS": env.list("OPENSEARCH_HOSTS", default=["http://opensearch:9200"]),
+    # BASIC Auth (없으면 빈 문자열)
+    "USER": env.str("OPENSEARCH_USER", default=""),
+    "PASSWORD": env.str("OPENSEARCH_PASSWORD", default=""),
+    # 인덱스 접두사 (테넌트/스테이지 구분용)
+    "INDEX_PREFIX": env.str("OPENSEARCH_INDEX_PREFIX", default="veilgram"),
+    # 한국어 형태소 분석기 사용 여부 (플러그인 없는 환경은 False)
+    "USE_NORI": env.bool("OPENSEARCH_USE_NORI", default=False),
+    # 클라이언트 타임아웃
+    "TIMEOUT": env.int("OPENSEARCH_TIMEOUT", default=3),
+}
