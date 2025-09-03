@@ -14,10 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY assets ./assets/
 COPY comments ./comments/
+COPY hashtags ./hashtags/
 COPY profiles ./profiles/
 COPY polls ./polls/
 COPY posts ./posts/
 COPY relations ./relations/
+COPY search ./search/
 COPY users ./users/
 COPY veilgram ./veilgram/
 COPY entrypoint.sh .
