@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count, Exists, OuterRef
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
@@ -40,6 +41,17 @@ class ProfileViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.Re
         if self.action in ("partial_update_me", "update_me", "me"):
             return ProfileUpdateSerializer if self.request.method != "GET" else ProfileReadSerializer
         return ProfileReadSerializer
+
+    def perform_create(self, serializer):
+        obj = serializer.save()
+
+        def _index():
+            # 지연 import로 테스트/로딩 시 의존성 최소화
+            from search.services import index_user
+
+            index_user(user_id=obj.user_id, nickname=obj.nickname, status_message=getattr(obj, "status_message", "") or "", created_at=obj.created_at)
+
+        transaction.on_commit(_index)
 
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)

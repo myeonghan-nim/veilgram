@@ -4,12 +4,13 @@ from typing import Sequence
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
 
 from .models import Post
 from assets.models import Asset, AssetStatus
+from hashtags.services import attach_hashtags_to_post
 from polls.models import Poll
 from polls.services import create_poll as _create_poll
+from search.services import index_post
 
 
 def _max_attachments() -> int:
@@ -55,7 +56,21 @@ def create_post(*, author, content: str, asset_ids: Sequence, poll_id: str | Non
     # 4) Post 생성
     post = Post.objects.create(author=author, content=content, poll=poll_obj)
 
-    # 5) 첨부 연결
+    # 5) Hashtag 자동 추출 및 연결
+    tags = attach_hashtags_to_post(post.id, content)
+
+    # 6) 검색 색인
+    index_post(
+        post_id=post.id,
+        author_id=post.author_id,
+        author_nickname=getattr(getattr(post, "author", None), "nickname", "") or "",
+        content=post.content,
+        hashtags=tags,
+        created_at=post.created_at,
+        like_count=getattr(post, "like_count", 0),
+    )
+
+    # 7) 첨부 연결
     if asset_ids:
         Asset.objects.filter(id__in=asset_ids).update(post=post)
 
