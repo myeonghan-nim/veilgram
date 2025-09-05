@@ -1,4 +1,9 @@
-version: '3.8'
+x-veilgram-env: &veilgram-env
+  env_file:
+    - .env
+  networks:
+    - veilgram-net
+  restart: unless-stopped
 
 services:
   nginx:
@@ -10,87 +15,130 @@ services:
       - ./nginx/certs/:/etc/nginx/certs/:ro
       - web_static:/usr/share/nginx/html/static:ro
       - web_media:/usr/share/nginx/html/media:ro
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - web
-    networks:
-      - veilgram-net
-    restart: unless-stopped
+    ports: ["80:80","443:443"]
+    depends_on: [web]
+    <<: *veilgram-env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      test: ["CMD-SHELL","wget -q -O- http://localhost/healthz || exit 1"]
       interval: 10s
+      timeout: 3s
       retries: 3
 
   web:
-    build: .
+    build: { context: ., target: app }
     container_name: veilgram_web
-    env_file:
-      - .env
+    <<: *veilgram-env
     volumes:
       - web_static:/app/static
       - web_media:/app/media
-    expose:
-      - "8000"
+    expose: ["8000"]
     depends_on:
-      - db
-      - redis
-      - minio
-    networks:
-      - veilgram-net
-    restart: unless-stopped
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+      minio: { condition: service_started }
+    command: ["sh","-c","python manage.py collectstatic --noinput && gunicorn veilgram.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 8 --timeout 60"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      test: ["CMD-SHELL","wget -q -O- http://localhost:8000/healthz || exit 1"]
       interval: 10s
+      timeout: 3s
       retries: 3
+
+  celery_worker:
+    build: { context: ., target: app }
+    container_name: veilgram_celery_worker
+    <<: *veilgram-env
+    depends_on: [db, redis]
+    command: ["celery","-A","veilgram","worker","-l","info","-Q","default,assets,notifications","--concurrency","4"]
+
+  celery_beat:
+    build: { context: ., target: app }
+    container_name: veilgram_celery_beat
+    <<: *veilgram-env
+    depends_on: [db, redis]
+    command: ["celery","-A","veilgram","beat","-l","info"]
 
   db:
     image: postgres:15-alpine
     container_name: veilgram_db
-    env_file:
-      - .env
+    <<: *veilgram-env
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    shm_size: "256m"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - veilgram-net
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:6-alpine
     container_name: veilgram_redis
-    env_file:
-      - .env
+    <<: *veilgram-env
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: ["redis-server","--appendonly","yes","--requirepass","${REDIS_PASSWORD}"]
     volumes:
       - redis_data:/data
-    networks:
-      - veilgram-net
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD","redis-cli","-a","${REDIS_PASSWORD}","ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   minio:
     image: minio/minio:latest
     container_name: veilgram_minio
-    env_file:
-      - .env
+    <<: *veilgram-env
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    command: ["server","/data","--console-address",":9001"]
+    ports: ["9000:9000","9001:9001"]
     volumes:
       - minio_data:/data
-    networks:
-      - veilgram-net
-    restart: unless-stopped
+
+  minio-mc:
+    image: minio/mc:latest
+    container_name: veilgram_minio_mc
+    <<: *veilgram-env
+    depends_on: [minio]
+    entrypoint:
+      - /bin/sh
+      - -eu
+      - -c
+      - >
+        BUCKET="$${MINIO_BUCKET:-veilgram}"; [ -z "$$BUCKET" ] && BUCKET="veilgram";
+        i=1; while [ "$$i" -le 30 ]; do
+          mc alias set minio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1 || true;
+          if mc ls minio >/dev/null 2>&1; then
+            break;
+          fi;
+          echo "[mc-init] waiting for minio... ($$i/30)"; sleep 2; i=$$((i+1));
+        done;
+        mc ls minio >/dev/null 2>&1 || { echo "[mc-init] ERROR: minio not reachable"; exit 1; };
+        mc mb -p "minio/$$BUCKET" || true;
+        if [ "$${MINIO_PUBLIC:-0}" = "1" ]; then mc anonymous set download "minio/$$BUCKET" || true; fi
+    restart: "no"
+
+  migrate:
+    build: { context: ., target: app }
+    container_name: veilgram_migrate
+    <<: *veilgram-env
+    depends_on:
+      db: { condition: service_healthy }
+    command:
+      - sh
+      - -c
+      - >
+        for i in $(seq 1 30); do
+          pg_isready -h db -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB} && break;
+          echo '[migrate] waiting for db... ('"$$i"'/30)'; sleep 2;
+        done && python manage.py migrate --noinput
+    restart: "no"
 
 volumes:
   web_static:

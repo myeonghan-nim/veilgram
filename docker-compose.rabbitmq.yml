@@ -1,0 +1,36 @@
+x-veilgram-env: &veilgram-env
+  env_file: [.env]
+  networks: [veilgram-net]
+  restart: unless-stopped
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: veilgram_rabbitmq
+    <<: *veilgram-env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    expose: ["5672"]
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL","rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  feed_consumer_rabbitmq:
+    build: { context: ., target: app }
+    container_name: veilgram_feed_consumer_rabbitmq
+    <<: *veilgram-env
+    depends_on: [web, redis, db, rabbitmq]
+    environment: { FEED_BUS_DRIVER: rabbitmq }
+    command: ["python","manage.py","feed_consumer"]
+
+volumes:
+  rabbitmq_data:
+
+networks:
+  veilgram-net:
+    driver: bridge
