@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "storages",
     "assets",
     "comments",
+    "feed",
     "hashtags",
     "polls",
     "posts",
@@ -256,3 +257,35 @@ OPENSEARCH = {
     # 클라이언트 타임아웃
     "TIMEOUT": env.int("OPENSEARCH_TIMEOUT", default=3),
 }
+
+
+# Feed settings
+
+FEED_BUS_DRIVER = env("FEED_BUS_DRIVER", default="kafka")  # kafka | rabbitmq
+
+# Kafka
+FEED_KAFKA_BOOTSTRAP = env("FEED_KAFKA_BOOTSTRAP", default="kafka:9092")
+FEED_KAFKA_GROUP_ID = env("FEED_KAFKA_GROUP_ID", default="feed-service")
+FEED_KAFKA_TOPICS = env.list("FEED_KAFKA_TOPICS", default=["post.events", "hashtag.events", "user.events"])
+
+# RabbitMQ
+FEED_RABBIT_URL = env("FEED_RABBIT_URL", default="amqp://guest:guest@rabbitmq:5672/")
+FEED_RABBIT_EXCHANGE = env("FEED_RABBIT_EXCHANGE", default="app.events")
+FEED_RABBIT_QUEUE = env("FEED_RABBIT_QUEUE", default="feed.service")
+FEED_RABBIT_BINDINGS = env.list("FEED_RABBIT_BINDINGS", default=["post.events", "hashtag.events", "user.events"])
+
+# Redis Cache
+FEED_REDIS_URL = env("FEED_REDIS_URL", default="redis://redis:6379/0")
+FEED_CACHE_TTL_SEC = env.int("FEED_CACHE_TTL_SEC", default=60)
+
+# Cassandra / Scylla
+CASSANDRA_ENABLED = env.bool("CASSANDRA_ENABLED", default=False)
+CASSANDRA_CONTACT_POINTS = env.list("CASSANDRA_CONTACT_POINTS", default=["cassandra"])
+CASSANDRA_KEYSPACE = env("CASSANDRA_KEYSPACE", default="veilgram")
+
+
+# Celery
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", os.environ.get("REDIS_URL", "redis://:password@redis:6379/0"))
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TASK_ALWAYS_EAGER = False
