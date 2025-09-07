@@ -32,6 +32,7 @@ COPY hashtags ./hashtags/
 COPY profiles ./profiles/
 COPY polls ./polls/
 COPY posts ./posts/
+COPY realtime ./realtime/
 COPY relations ./relations/
 COPY search ./search/
 COPY users ./users/
