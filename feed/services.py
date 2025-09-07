@@ -7,7 +7,7 @@ from feed.cache import FeedCache
 from relations.models import Follow
 from posts.models import Post
 
-_cache = FeedCache(settings.FEED_REDIS_URL, settings.FEED_CACHE_TTL_SEC)
+_cache = FeedCache(settings.REDIS_URL, settings.FEED_CACHE_TTL_SEC)
 
 # ---- Cassandra 지연 초기화 ----
 _REPO_SENTINEL = object()

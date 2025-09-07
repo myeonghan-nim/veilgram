@@ -25,16 +25,21 @@ env = environ.Env(
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 
+# Common
+
+REDIS_URL = env.str("REDIS_URL", default="redis://redis:6379/0")
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-&r9*5by0w8^fr^25%na!22wiae5dcolf)jf84%lk+px4vp&cxr"
+SECRET_KEY = env.str("SECRET_KEY", default="__dev_insecure__change_me__")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("DEBUG")
+DEBUG = env.bool("DEBUG", default=True)
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost"])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
 
 
 # Application definition
@@ -46,6 +51,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "channels",
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -57,6 +63,7 @@ INSTALLED_APPS = [
     "polls",
     "posts",
     "profiles",
+    "realtime",
     "relations",
     "search",
     "users",
@@ -90,6 +97,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "veilgram.wsgi.application"
+ASGI_APPLICATION = "veilgram.asgi.application"
 
 
 # Database
@@ -101,7 +109,7 @@ DATABASES = {
         "NAME": env("POSTGRES_DB"),
         "USER": env("POSTGRES_USER"),
         "PASSWORD": env("POSTGRES_PASSWORD"),
-        "HOST": "db",
+        "HOST": env("POSTGRES_HOST", default="db"),
         "PORT": 5432,
     }
 }
@@ -112,7 +120,7 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://:{env('REDIS_PASSWORD')}@redis:6379/1",
+        "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
@@ -122,14 +130,32 @@ CACHES = {
 
 SESSION_LIMIT_ONE_DEVICE = True
 
+# Celery
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", REDIS_URL)
+CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TASK_ALWAYS_EAGER = False
+
+# Channels
+CHANNEL_LAYER_CAPACITY = env.int("CHANNEL_LAYER_CAPACITY", default=1000)
+CHANNEL_LAYERS = {
+    "default": {
+        # 운영: channels_redis, 테스트: in-memory로 override (pytest에서 처리)
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+            "capacity": CHANNEL_LAYER_CAPACITY,
+        },
+    }
+}
+
 
 # Media Storage
 
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-AWS_S3_ENDPOINT_URL = "http://minio:9000"
+AWS_S3_ENDPOINT_URL = env.str("AWS_S3_ENDPOINT_URL", default="http://minio:9000")
 AWS_ACCESS_KEY_ID = env("MINIO_ROOT_USER")
 AWS_SECRET_ACCESS_KEY = env("MINIO_ROOT_PASSWORD")
-AWS_STORAGE_BUCKET_NAME = "media"
+AWS_STORAGE_BUCKET_NAME = env.str("AWS_STORAGE_BUCKET_NAME", default="media")
 AWS_S3_USE_SSL = False
 AWS_S3_REGION_NAME = ""
 
@@ -262,30 +288,24 @@ OPENSEARCH = {
 # Feed settings
 
 FEED_BUS_DRIVER = env("FEED_BUS_DRIVER", default="kafka")  # kafka | rabbitmq
+FEED_EVENT_TOPICS = env.list("FEED_EVENT_TOPICS", default=["post.events", "hashtag.events", "user.events"])
 
 # Kafka
 FEED_KAFKA_BOOTSTRAP = env("FEED_KAFKA_BOOTSTRAP", default="kafka:9092")
 FEED_KAFKA_GROUP_ID = env("FEED_KAFKA_GROUP_ID", default="feed-service")
-FEED_KAFKA_TOPICS = env.list("FEED_KAFKA_TOPICS", default=["post.events", "hashtag.events", "user.events"])
+FEED_KAFKA_TOPICS = FEED_EVENT_TOPICS
 
 # RabbitMQ
 FEED_RABBIT_URL = env("FEED_RABBIT_URL", default="amqp://guest:guest@rabbitmq:5672/")
 FEED_RABBIT_EXCHANGE = env("FEED_RABBIT_EXCHANGE", default="app.events")
 FEED_RABBIT_QUEUE = env("FEED_RABBIT_QUEUE", default="feed.service")
-FEED_RABBIT_BINDINGS = env.list("FEED_RABBIT_BINDINGS", default=["post.events", "hashtag.events", "user.events"])
+FEED_RABBIT_BINDINGS = FEED_EVENT_TOPICS
 
-# Redis Cache
-FEED_REDIS_URL = env("FEED_REDIS_URL", default="redis://redis:6379/0")
 FEED_CACHE_TTL_SEC = env.int("FEED_CACHE_TTL_SEC", default=60)
+FEED_UPDATES_CHANNEL = env("FEED_UPDATES_CHANNEL", default="feed:updates")
 
-# Cassandra / Scylla
+
+# Cassandra
 CASSANDRA_ENABLED = env.bool("CASSANDRA_ENABLED", default=False)
 CASSANDRA_CONTACT_POINTS = env.list("CASSANDRA_CONTACT_POINTS", default=["cassandra"])
 CASSANDRA_KEYSPACE = env("CASSANDRA_KEYSPACE", default="veilgram")
-
-
-# Celery
-
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", os.environ.get("REDIS_URL", "redis://:password@redis:6379/0"))
-CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
-CELERY_TASK_ALWAYS_EAGER = False
