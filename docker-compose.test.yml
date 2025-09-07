@@ -1,15 +1,13 @@
-x-veilgram-test-env: &veilgram-test-env
-  env_file:
-    - .env
-  networks:
-    - veilgram-test-net
+x-test-env: &test-env
+  env_file: [.env.test]
+  networks: [veilgram-test-net]
   restart: "no"
 
 services:
   test_db:
     image: postgres:15-alpine
     container_name: veilgram_test_db
-    <<: *veilgram-test-env
+    <<: *test-env
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -26,7 +24,7 @@ services:
   test_redis:
     image: redis:6-alpine
     container_name: veilgram_test_redis
-    <<: *veilgram-test-env
+    <<: *test-env
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     command: ["redis-server","--appendonly","yes","--requirepass","${REDIS_PASSWORD}"]
@@ -41,7 +39,7 @@ services:
   test_minio:
     image: minio/minio:latest
     container_name: veilgram_test_minio
-    <<: *veilgram-test-env
+    <<: *test-env
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -49,42 +47,32 @@ services:
     volumes:
       - minio_test_data:/data
 
-  test_minio_mc:
-    image: minio/mc:latest
-    container_name: veilgram_test_minio_mc
-    <<: *veilgram-test-env
+  test_minio_mc_mb:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    container_name: veilgram_test_minio_mc_mb
+    <<: *test-env
     depends_on: [test_minio]
-    entrypoint:
-      - /bin/sh
-      - -eu
-      - -c
-      - >
-        BUCKET="veilgram-test";
-        i=1; while [ "$$i" -le 30 ]; do
-          if mc alias set minio http://veilgram_test_minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1
-            && mc ls minio >/dev/null 2>&1; then break; fi;
-          echo "[mc-init] waiting for minio (test)... ($$i/30)"; sleep 2; i=$$((i+1));
-        done;
-        mc ls minio >/dev/null 2>&1 || { echo "[mc-init] ERROR: minio (test) not reachable"; exit 1; };
-        mc mb -p "minio/$$BUCKET" || true
-    restart: "no"
+    environment:
+      MC_HOST_minio: "http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@veilgram_test_minio:9000"
+    command: ["mb", "-p", "minio/${AWS_STORAGE_BUCKET_NAME:-veilgram-test}"]
+    restart: "on-failure"
 
   test:
     build: { context: ., target: test }
     container_name: veilgram_test_runner
-    <<: *veilgram-test-env
+    <<: *test-env
     depends_on:
-      test_db:   { condition: service_healthy }
-      test_redis:{ condition: service_started }
-      test_minio:{ condition: service_started }
-    # 운영과 분리된 엔드포인트/버킷/DB/Redis로 override
+      test_db: { condition: service_healthy }
+      test_redis: { condition: service_started }
+      test_minio: { condition: service_started }
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@veilgram_test_db:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@veilgram_test_redis:6379/0
-      FEED_REDIS_URL: redis://:${REDIS_PASSWORD}@veilgram_test_redis:6379/0
-      MINIO_ENDPOINT: http://veilgram_test_minio:9000
-      MINIO_BUCKET: veilgram-test
+      AWS_S3_ENDPOINT_URL: http://veilgram_test_minio:9000
+      AWS_STORAGE_BUCKET_NAME: veilgram-test
       DEBUG: "1"
+      OPENSEARCH_ENABLED: "0"
+      CASSANDRA_ENABLED: "0"
     volumes:
       - .:/app:cached
     command: ["pytest","-q","--maxfail=1","--disable-warnings"]
