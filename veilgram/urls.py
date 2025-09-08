@@ -31,4 +31,5 @@ urlpatterns = [
     path("api/v1/", include("posts.urls")),
     path("api/v1/", include("hashtags.urls")),
     path("api/v1/", include("search.urls")),
+    path("api/v1/", include("reports.urls")),
 ]
