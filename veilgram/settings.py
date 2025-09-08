@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "profiles",
     "realtime",
     "relations",
+    "reports",
     "search",
     "users",
 ]

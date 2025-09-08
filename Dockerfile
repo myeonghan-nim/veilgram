@@ -34,6 +34,7 @@ COPY polls ./polls/
 COPY posts ./posts/
 COPY realtime ./realtime/
 COPY relations ./relations/
+COPY reports ./reports/
 COPY search ./search/
 COPY users ./users/
 COPY veilgram ./veilgram/
