@@ -8,6 +8,7 @@ from django.db import transaction
 from .models import Post
 from assets.models import Asset, AssetStatus
 from hashtags.services import attach_hashtags_to_post
+from moderation.services import check_text
 from polls.models import Poll
 from polls.services import create_poll as _create_poll
 from search.services import index_post
@@ -23,6 +24,13 @@ def create_post(*, author, content: str, asset_ids: Sequence, poll_id: str | Non
     content = (content or "").strip()
     if not content:
         raise ValidationError("Content must not be empty")
+
+    # 1.5) 모더레이션 사전 검증
+    result = check_text(content)
+    if not result.allowed and result.verdict == "block":
+        # 테스트/일관성을 위해 기존 스타일대로 문자열 메시지 사용
+        # (필드 지정이 필요하면 {"content": ["Content violates policies"]} 로도 변경 가능)
+        raise ValidationError("Content violates policies")
 
     # 2) Poll 결정(둘 다 주면 오류)
     if poll_id and poll_options:

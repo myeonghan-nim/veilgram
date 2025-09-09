@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from .models import Comment
 from assets.serializers import AssetOut
+from moderation.services import check_text
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -68,6 +69,11 @@ class CommentSerializer(serializers.ModelSerializer):
             content = (attrs.get("content") or "").strip()
             if not content:
                 raise serializers.ValidationError({"content": "Content must not be empty."})
+            # 모더레이션 사전 검증
+            result = check_text(content)
+            if not result.allowed and result.verdict == "block":
+                # DRF 스타일의 필드별 에러 메시지 유지
+                raise serializers.ValidationError({"content": "Content violates policies."})
 
         # 검증에 사용한 post를 create에서 재사용할 수 있게 저장(옵션)
         self._validated_post = post
