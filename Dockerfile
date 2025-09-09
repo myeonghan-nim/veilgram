@@ -29,6 +29,7 @@ COPY assets ./assets/
 COPY comments ./comments/
 COPY feed ./feed/
 COPY hashtags ./hashtags/
+COPY moderation ./moderation/
 COPY profiles ./profiles/
 COPY polls ./polls/
 COPY posts ./posts/

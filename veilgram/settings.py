@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "comments",
     "feed",
     "hashtags",
+    "moderation",
     "polls",
     "posts",
     "profiles",
