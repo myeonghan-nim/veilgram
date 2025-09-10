@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "storages",
     "assets",
-    "comments",
+    "comments.apps.CommentsConfig",
     "feed",
     "hashtags",
     "moderation",
@@ -140,7 +140,8 @@ CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_ROUTES = {
     "notifications.tasks.*": {"queue": "notifications"},
-    "posts.tasks.on_post_*": {"queue": "posts"},
+    "comments.tasks.*": {"queue": "comments"},
+    "posts.tasks.*": {"queue": "posts"},
 }
 CELERY_TASK_TIME_LIMIT = 30
 CELERY_TASK_SOFT_TIME_LIMIT = 25
