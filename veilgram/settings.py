@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     "moderation",
     "notifications",
     "polls",
-    "posts",
+    "posts.apps.PostsConfig",
     "profiles",
     "realtime",
     "relations",
@@ -140,6 +140,7 @@ CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_ROUTES = {
     "notifications.tasks.*": {"queue": "notifications"},
+    "posts.tasks.on_post_*": {"queue": "posts"},
 }
 CELERY_TASK_TIME_LIMIT = 30
 CELERY_TASK_SOFT_TIME_LIMIT = 25
@@ -147,6 +148,7 @@ CELERY_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 10
 
 PUSH_PROVIDER = env.str("PUSH_PROVIDER", default="dummy")  # apns | fcm | dummy
+EVENT_BUS_BACKEND = env.str("EVENT_BUS_BACKEND", default="dummy")  # dummy | kafka | rabbitmq
 
 # Channels
 CHANNEL_LAYER_CAPACITY = env.int("CHANNEL_LAYER_CAPACITY", default=1000)
