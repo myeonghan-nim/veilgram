@@ -61,3 +61,15 @@ def search_posts(q, page, size):
 
 def search_hashtags(q, page, size):
     return backend().search_hashtags(q, page, size)
+
+
+def delete_user(user_id):
+    backend().delete_user(str(user_id))
+
+
+def delete_post(post_id):
+    backend().delete_post(str(post_id))
+
+
+def delete_hashtag(name):
+    backend().delete_hashtag(name)

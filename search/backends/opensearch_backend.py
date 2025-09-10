@@ -125,3 +125,12 @@ class OpenSearchBackend:
 
     def search_hashtags(self, q, page, size):
         return self._search(self.idx_tags, q, page, size, ["name"], {"name": 3.0})
+
+    def delete_user(self, user_id: str) -> None:
+        self.client.delete(index=self.idx_users, id=user_id, ignore=[404], refresh="wait_for")
+
+    def delete_post(self, post_id: str) -> None:
+        self.client.delete(index=self.idx_posts, id=post_id, ignore=[404], refresh="wait_for")
+
+    def delete_hashtag(self, name: str) -> None:
+        self.client.delete(index=self.idx_tags, id=name, ignore=[404], refresh="wait_for")

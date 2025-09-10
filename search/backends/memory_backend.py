@@ -47,3 +47,12 @@ class InMemoryBackend:
 
     def search_hashtags(self, q, page, size):
         return self._find(self.tags, q, page, size, ["name"])
+
+    def delete_user(self, user_id: str) -> None:
+        self.users.pop(user_id, None)
+
+    def delete_post(self, post_id: str) -> None:
+        self.posts.pop(post_id, None)
+
+    def delete_hashtag(self, name: str) -> None:
+        self.tags.pop(name, None)
