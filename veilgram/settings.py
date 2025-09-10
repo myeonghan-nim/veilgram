@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "feed",
     "hashtags",
     "moderation",
+    "notifications",
     "polls",
     "posts",
     "profiles",
@@ -136,6 +137,16 @@ SESSION_LIMIT_ONE_DEVICE = True
 CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", REDIS_URL)
 CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_ROUTES = {
+    "notifications.tasks.*": {"queue": "notifications"},
+}
+CELERY_TASK_TIME_LIMIT = 30
+CELERY_TASK_SOFT_TIME_LIMIT = 25
+CELERY_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 10
+
+PUSH_PROVIDER = env.str("PUSH_PROVIDER", default="dummy")  # apns | fcm | dummy
 
 # Channels
 CHANNEL_LAYER_CAPACITY = env.int("CHANNEL_LAYER_CAPACITY", default=1000)

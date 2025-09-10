@@ -30,9 +30,10 @@ COPY comments ./comments/
 COPY feed ./feed/
 COPY hashtags ./hashtags/
 COPY moderation ./moderation/
-COPY profiles ./profiles/
+COPY notifications ./notifications/
 COPY polls ./polls/
 COPY posts ./posts/
+COPY profiles ./profiles/
 COPY realtime ./realtime/
 COPY relations ./relations/
 COPY reports ./reports/
