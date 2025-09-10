@@ -1,4 +1,5 @@
 from typing import Dict
+
 from feed.services import handle_post_created, handle_post_deleted, handle_hashtags_extracted, handle_user_follow_changed
 
 _HANDLERS = {
