@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/v1/", include("feed.urls")),
     path("api/v1/", include("hashtags.urls")),
     path("api/v1/", include("moderation.urls")),
+    path("api/v1/", include("notifications.urls")),
     path("api/v1/", include("polls.urls")),
     path("api/v1/", include("posts.urls")),
     path("api/v1/", include("profiles.urls")),
