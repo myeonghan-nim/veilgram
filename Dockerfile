@@ -26,6 +26,7 @@ RUN python -m pip install --upgrade pip \
     && rm -f /tmp/requirements.txt
 
 COPY assets ./assets/
+COPY audits ./audits/
 COPY comments ./comments/
 COPY feed ./feed/
 COPY hashtags ./hashtags/

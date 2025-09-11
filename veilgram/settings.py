@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "storages",
     "assets",
+    "audits.apps.AuditsConfig",
     "comments.apps.CommentsConfig",
     "feed",
     "hashtags",
@@ -325,3 +326,8 @@ FEED_UPDATES_CHANNEL = env("FEED_UPDATES_CHANNEL", default="feed:updates")
 CASSANDRA_ENABLED = env.bool("CASSANDRA_ENABLED", default=False)
 CASSANDRA_CONTACT_POINTS = env.list("CASSANDRA_CONTACT_POINTS", default=["cassandra"])
 CASSANDRA_KEYSPACE = env("CASSANDRA_KEYSPACE", default="veilgram")
+
+
+# Audit logs
+AUDIT_HASH_SALT = env.str("AUDIT_HASH_SALT", default=SECRET_KEY)
+AUDIT_RETENTION_DAYS = env.int("AUDIT_RETENTION_DAYS", default=90)
