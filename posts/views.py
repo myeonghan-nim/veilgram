@@ -14,6 +14,8 @@ from .models import Post, PostLike, Bookmark, Repost
 from .paginations import PostCursorPagination
 from .serializers import PostCreateIn, PostOut, PostDetailOut, BookmarkOut, RepostOut
 from .services import create_post
+from audits.models import AuditAction
+from audits.services import write_audit_log
 from polls.models import Vote
 
 
@@ -21,6 +23,15 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
     permission_classes = [IsAuthenticated]
     queryset = Post.objects.all()
     pagination_class = PostCursorPagination
+
+    def _audit_post(self, action, post, extra=None):
+        """
+        posts의 주요 상태 변경 직후 한 줄로 감사 로그를 남기기 위한 헬퍼.
+        - target_type: 'post'
+        - target_id: 해당 post.id
+        - request를 넘겨 IP/UA 해시 자동 저장
+        """
+        write_audit_log(action=action, user=self.request.user, target_type="post", target_id=str(post.id), request=self.request, extra=extra or {})
 
     def _with_related(self, base_qs):
         qs = base_qs.select_related("poll").prefetch_related("assets", "poll__options")
@@ -56,6 +67,8 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
         except DjangoValidationError as e:
             detail = getattr(e, "message_dict", None) or getattr(e, "messages", None) or str(e)
             raise DRFValidationError(detail)
+
+        self._audit_post(AuditAction.CREATE_POST, post, {"endpoint": "POST /api/v1/posts"})
         return Response(PostOut(post).data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk=None):
@@ -90,6 +103,8 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
                     return Response({"detail": "Already liked"}, status=status.HTTP_400_BAD_REQUEST)
             except IntegrityError:
                 return Response({"detail": "Already liked"}, status=status.HTTP_400_BAD_REQUEST)
+
+        self._audit_post(AuditAction.CREATE_POST, post, {"endpoint": "POST /api/v1/posts"})
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @like.mapping.delete
@@ -98,6 +113,8 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
         deleted, _ = PostLike.objects.filter(user=request.user, post=post).delete()
         if deleted == 0:
             return Response({"detail": "Not liked"}, status=status.HTTP_404_NOT_FOUND)
+
+        self._audit_post(AuditAction.CREATE_POST, post, {"endpoint": "POST /api/v1/posts"})
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"], url_path="bookmark", permission_classes=[IsAuthenticated])
@@ -110,6 +127,8 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
                     return Response({"detail": "Already bookmarked"}, status=status.HTTP_400_BAD_REQUEST)
             except IntegrityError:
                 return Response({"detail": "Already bookmarked"}, status=status.HTTP_400_BAD_REQUEST)
+
+        self._audit_post(AuditAction.CREATE_POST, post, {"endpoint": "POST /api/v1/posts"})
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @bookmark.mapping.delete
@@ -118,6 +137,8 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
         deleted, _ = Bookmark.objects.filter(user=request.user, post=post).delete()
         if deleted == 0:
             return Response({"detail": "Not bookmarked"}, status=status.HTTP_404_NOT_FOUND)
+
+        self._audit_post(AuditAction.CREATE_POST, post, {"endpoint": "POST /api/v1/posts"})
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # UX는 /share, 모델은 Repost
@@ -129,6 +150,15 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
                 rp = Repost.objects.create(user=request.user, original_post=original)
         except IntegrityError:
             return Response({"detail": "Already reposted"}, status=status.HTTP_400_BAD_REQUEST)
+
+        write_audit_log(
+            action=AuditAction.REPOST_CREATE,
+            user=request.user,
+            target_type="post",
+            target_id=str(original.id),
+            request=request,
+            extra={"endpoint": "POST /api/v1/posts/{id}/share", "repost_id": str(rp.id)},
+        )
         return Response(RepostOut(rp).data, status=status.HTTP_201_CREATED)
 
 
