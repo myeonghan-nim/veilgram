@@ -25,6 +25,8 @@ RUN python -m pip install --upgrade pip \
     && pip install --no-cache-dir --no-index --find-links=/wheels -r /tmp/requirements.txt \
     && rm -f /tmp/requirements.txt
 
+COPY common ./common/
+
 COPY assets ./assets/
 COPY audits ./audits/
 COPY comments ./comments/
