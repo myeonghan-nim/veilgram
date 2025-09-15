@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as DRFValidationError
@@ -9,11 +10,38 @@ from rest_framework.response import Response
 from .models import Poll, PollOption
 from .serializers import PollOut, PollCreateIn, VoteIn, VoteOut
 from .services import create_poll, cast_vote, retract_vote
+from common.schema import ErrorOut
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Polls"],
+        summary="내가 생성한 투표 목록",
+        description="현재 로그인 사용자가 생성한 투표를 최신순으로 반환합니다. (현재 뷰는 페이지네이션 없이 전체 반환)",
+        operation_id="polls_list",
+        responses={200: OpenApiResponse(response=PollOut(many=True), description="투표 목록"), 401: OpenApiResponse(response=ErrorOut)},
+    ),
+    retrieve=extend_schema(
+        tags=["Polls"],
+        summary="투표 단건 조회",
+        operation_id="polls_retrieve",
+        parameters=[OpenApiParameter(name="pk", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="투표 ID (UUID)")],
+        responses={200: OpenApiResponse(response=PollOut, description="투표 상세/집계"), 401: OpenApiResponse(response=ErrorOut), 404: OpenApiResponse(response=ErrorOut)},
+    ),
+    create=extend_schema(
+        tags=["Polls"],
+        summary="투표 생성",
+        description="옵션 2~5개, `allow_multiple`(복수 선택) 여부를 지정해 새 투표를 생성합니다.",
+        operation_id="polls_create",
+        request=PollCreateIn,
+        responses={201: OpenApiResponse(response=PollOut, description="생성된 투표"), 400: OpenApiResponse(response=ErrorOut), 401: OpenApiResponse(response=ErrorOut)},
+        examples=[OpenApiExample("요청 예시", value={"options": ["국밥", "비빔밥", "김치찌개"], "allow_multiple": False}, request_only=True)],
+    ),
+)
 class PollViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Poll.objects.all()
+    serializer_class = PollOut
 
     def retrieve(self, request, pk=None):
         poll = get_object_or_404(self.get_queryset(), pk=pk)
@@ -39,6 +67,28 @@ class PollViewSet(viewsets.GenericViewSet):
             raise DRFValidationError(detail)
         return Response(PollOut(created.poll).data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        tags=["Polls"],
+        summary="투표 참여",
+        description="특정 투표의 옵션 하나(또는 정책상 허용되는 복수 개)에 투표합니다.",
+        operation_id="polls_vote",
+        parameters=[OpenApiParameter(name="pk", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="투표 ID (UUID)")],
+        request=VoteIn,
+        responses={
+            200: OpenApiResponse(response=VoteOut, description="현재 내 선택 상태와 최신 집계"),
+            400: OpenApiResponse(response=ErrorOut, description="잘못된 옵션 ID 등 검증 오류"),
+            401: OpenApiResponse(response=ErrorOut),
+            404: OpenApiResponse(response=ErrorOut),
+        },
+        examples=[
+            OpenApiExample("요청 예시", value={"option_id": "11111111-1111-1111-1111-111111111111"}, request_only=True),
+            OpenApiExample(
+                "응답 예시",
+                value={"poll": {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "options": []}, "my_option_id": "11111111-1111-1111-1111-111111111111"},
+                response_only=True,
+            ),
+        ],
+    )
     @action(methods=["post"], detail=True, url_path="vote")
     def vote(self, request, pk=None):
         """
@@ -65,6 +115,15 @@ class PollViewSet(viewsets.GenericViewSet):
         out = VoteOut({"poll": result.poll, "my_option_id": result.my_option_id})
         return Response(out.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        tags=["Polls"],
+        summary="투표 철회",
+        description="내가 선택한 옵션을 철회하고, 최신 집계를 반환합니다.",
+        operation_id="polls_unvote",
+        parameters=[OpenApiParameter(name="pk", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="투표 ID (UUID)")],
+        responses={200: OpenApiResponse(response=VoteOut, description="철회 후 최신 집계"), 401: OpenApiResponse(response=ErrorOut), 404: OpenApiResponse(response=ErrorOut)},
+        examples=[OpenApiExample("응답 예시", value={"poll": {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "options": []}, "my_option_id": None}, response_only=True)],
+    )
     @action(methods=["post"], detail=True, url_path="unvote")
     def unvote(self, request, pk=None):
         """
@@ -75,6 +134,14 @@ class PollViewSet(viewsets.GenericViewSet):
         out = VoteOut({"poll": result.poll, "my_option_id": result.my_option_id})
         return Response(out.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        tags=["Polls"],
+        summary="투표 결과 조회",
+        description="현재 시점의 투표 집계를 조회합니다.",
+        operation_id="polls_results",
+        parameters=[OpenApiParameter(name="pk", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="투표 ID (UUID)")],
+        responses={200: OpenApiResponse(response=PollOut, description="현재 집계"), 401: OpenApiResponse(response=ErrorOut), 404: OpenApiResponse(response=ErrorOut)},
+    )
     @action(methods=["get"], detail=True, url_path="results")
     def results(self, request, pk=None):
         poll = get_object_or_404(self.get_queryset(), pk=pk)

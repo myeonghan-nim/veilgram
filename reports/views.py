@@ -1,4 +1,5 @@
-from rest_framework import status, viewsets
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
+from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -7,12 +8,14 @@ from .serializers import UserReportIn, PostReportIn, CommentReportIn, ReportOut
 from . import services
 from audits.models import AuditAction
 from audits.services import write_audit_log
+from common.schema import ErrorOut
 
 UUID_RE = r"(?P<obj_id>[0-9a-fA-F-]{36})"
 
 
 class ReportsViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+    serializer_class = serializers.Serializer
 
     def _audit_report(self, *, action: str, target_type: str, target_id: str, report, reasons, block: bool):
         """
@@ -34,6 +37,21 @@ class ReportsViewSet(viewsets.ViewSet):
             },
         )
 
+    @extend_schema(
+        tags=["Reports"],
+        summary="사용자 신고",
+        description="대상 **사용자**에 대해 신고를 생성합니다. 필요 시 동시에 차단(`block=true`)을 수행할 수 있습니다.",
+        operation_id="reports_users_create",
+        parameters=[OpenApiParameter(name="obj_id", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="대상 사용자 ID (UUID)")],
+        request=UserReportIn,
+        responses={
+            201: OpenApiResponse(response=ReportOut, description="생성된 신고"),
+            400: OpenApiResponse(response=ErrorOut),
+            401: OpenApiResponse(response=ErrorOut),
+            404: OpenApiResponse(response=ErrorOut),
+        },
+        examples=[OpenApiExample("요청 예시", value={"reasons": ["spam", "harassment"], "block": True}, request_only=True)],
+    )
     @action(detail=False, methods=["post"], url_path=rf"users/{UUID_RE}")
     def users(self, request, obj_id=None):
         ser = UserReportIn(data=request.data)
@@ -45,6 +63,21 @@ class ReportsViewSet(viewsets.ViewSet):
         out = ReportOut.from_instance(report)
         return Response(out.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        tags=["Reports"],
+        summary="포스트 신고",
+        description="대상 **포스트**에 대해 신고를 생성합니다. 필요 시 동시에 차단(`block=true`)을 수행할 수 있습니다.",
+        operation_id="reports_posts_create",
+        parameters=[OpenApiParameter(name="obj_id", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="대상 포스트 ID (UUID)")],
+        request=PostReportIn,
+        responses={
+            201: OpenApiResponse(response=ReportOut, description="생성된 신고"),
+            400: OpenApiResponse(response=ErrorOut),
+            401: OpenApiResponse(response=ErrorOut),
+            404: OpenApiResponse(response=ErrorOut),
+        },
+        examples=[OpenApiExample("요청 예시", value={"reasons": ["hate", "nudity"], "block": False}, request_only=True)],
+    )
     @action(detail=False, methods=["post"], url_path=rf"posts/{UUID_RE}")
     def posts(self, request, obj_id=None):
         ser = PostReportIn(data=request.data)
@@ -56,6 +89,21 @@ class ReportsViewSet(viewsets.ViewSet):
         out = ReportOut.from_instance(report)
         return Response(out.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        tags=["Reports"],
+        summary="댓글 신고",
+        description="대상 **댓글**에 대해 신고를 생성합니다. 필요 시 동시에 차단(`block=true`)을 수행할 수 있습니다.",
+        operation_id="reports_comments_create",
+        parameters=[OpenApiParameter(name="obj_id", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="대상 댓글 ID (UUID)")],
+        request=CommentReportIn,
+        responses={
+            201: OpenApiResponse(response=ReportOut, description="생성된 신고"),
+            400: OpenApiResponse(response=ErrorOut),
+            401: OpenApiResponse(response=ErrorOut),
+            404: OpenApiResponse(response=ErrorOut),
+        },
+        examples=[OpenApiExample("요청 예시", value={"reasons": ["spam"]}, request_only=True)],
+    )
     @action(detail=False, methods=["post"], url_path=rf"comments/{UUID_RE}")
     def comments(self, request, obj_id=None):
         ser = CommentReportIn(data=request.data)

@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -11,11 +12,34 @@ from .models import Profile
 from .serializers import ProfileReadSerializer, ProfileCreateSerializer, ProfileUpdateSerializer
 from .permissions import IsOwnerOrReadOnlyProfile
 from .services.validators import ForbiddenNicknameService, normalize_nickname
+from common.schema import ErrorOut, AvailabilityOut
 from relations.models import Follow, Block
 
 User = get_user_model()
 
 
+@extend_schema_view(
+    create=extend_schema(
+        tags=["Profiles"],
+        summary="프로필 생성",
+        description="신규 사용자의 프로필을 생성합니다.",
+        operation_id="profiles_create",
+        request=ProfileCreateSerializer,
+        responses={
+            201: OpenApiResponse(response=ProfileReadSerializer, description="생성된 프로필"),
+            400: OpenApiResponse(response=ErrorOut),
+            401: OpenApiResponse(response=ErrorOut),
+        },
+        examples=[OpenApiExample("요청 예시", value={"nickname": "veil_user", "status_message": "hi!"}, request_only=True)],
+    ),
+    retrieve=extend_schema(
+        tags=["Profiles"],
+        summary="프로필 단건 조회",
+        operation_id="profiles_retrieve",
+        parameters=[OpenApiParameter(name="user_id", location=OpenApiParameter.PATH, type=OpenApiTypes.UUID, description="대상 사용자 ID (UUID). lookup_field=user_id")],
+        responses={200: OpenApiResponse(response=ProfileReadSerializer), 401: OpenApiResponse(response=ErrorOut), 404: OpenApiResponse(response=ErrorOut)},
+    ),
+)
 class ProfileViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.RetrieveModelMixin):
     queryset = Profile.objects.select_related("user")
     serializer_class = ProfileReadSerializer
@@ -56,11 +80,25 @@ class ProfileViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.Re
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
+    @extend_schema(
+        tags=["Profiles"],
+        summary="내 프로필 조회",
+        operation_id="profiles_me_get",
+        responses={200: OpenApiResponse(response=ProfileReadSerializer), 401: OpenApiResponse(response=ErrorOut)},
+    )
     @action(detail=False, methods=["get"], url_path="me", permission_classes=[IsAuthenticated])
     def me(self, request):
         prof = get_object_or_404(Profile, user=request.user)
         return Response(ProfileReadSerializer(prof).data)
 
+    @extend_schema(
+        tags=["Profiles"],
+        summary="내 프로필 수정(부분)",
+        operation_id="profiles_me_patch",
+        request=ProfileUpdateSerializer,
+        responses={200: OpenApiResponse(response=ProfileReadSerializer), 400: OpenApiResponse(response=ErrorOut), 401: OpenApiResponse(response=ErrorOut)},
+        examples=[OpenApiExample("요청 예시", value={"status_message": "updated!"}, request_only=True)],
+    )
     @me.mapping.patch
     def partial_update_me(self, request):
         prof = get_object_or_404(Profile, user=request.user)
@@ -69,12 +107,38 @@ class ProfileViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.Re
         obj = s.save()
         return Response(ProfileReadSerializer(obj).data)
 
+    @extend_schema(
+        tags=["Profiles"],
+        summary="내 프로필 삭제",
+        operation_id="profiles_me_delete",
+        responses={204: OpenApiResponse(description="삭제 성공"), 401: OpenApiResponse(response=ErrorOut)},
+    )
     @me.mapping.delete
     def delete_me(self, request):
         prof = get_object_or_404(Profile, user=request.user)
         prof.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(
+        tags=["Profiles"],
+        summary="닉네임 가용성 점검",
+        description=(
+            "`nickname` 후보의 사용 가능 여부를 검사합니다.\n"
+            "- 길이/형식 검사, 금칙어 포함 여부, 중복 여부를 판단합니다.\n"
+            "- `reasons` 예: `Type Error(Length)`, `Type Error(Format)`, `Forbidden Word Included`, `Duplicate Nickname`"
+        ),
+        operation_id="profiles_availability",
+        parameters=[
+            OpenApiParameter(
+                name="nickname", location=OpenApiParameter.QUERY, required=False, type=OpenApiTypes.STR, description="가용성 검사할 닉네임(미지정 시 빈 문자열로 처리)"
+            )
+        ],
+        responses={200: OpenApiResponse(response=AvailabilityOut, description="가용성 결과"), 401: OpenApiResponse(response=ErrorOut)},
+        examples=[
+            OpenApiExample("예시", value=None, request_only=True, description="GET /api/v1/profiles/availability?nickname=veil_user"),
+            OpenApiExample("응답 예시", value={"nickname": "veil_user", "available": True, "reasons": []}, response_only=True),
+        ],
+    )
     @action(detail=False, methods=["get"], url_path="availability", permission_classes=[IsAuthenticated])
     def availability(self, request):
         nickname = request.query_params.get("nickname") or ""
