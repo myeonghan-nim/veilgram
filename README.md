@@ -1,5 +1,7 @@
 # VeilGram
 
+> 이 프로젝트는 ChatGPT를 사용하여 작성된 VibeCoding 프로젝트입니다.
+
 VeilGram는 이메일이나 전화번호 없이 익명 ID로 가입할 수 있는 익명 SNS 플랫폼입니다.<br/>
 텍스트, 이미지(JPEG/PNG), 동영상(MP4) 등 멀티미디어 업로드와 최대 5개 선택지의 실시간 집계형 투표 기능을 제공해 사용자가 자유롭게 소통할 수 있도록 설계되었습니다.<br/>
 
@@ -40,3 +42,40 @@ VeilGram는 이메일이나 전화번호 없이 익명 ID로 가입할 수 있�
   ELK/EFK 로그 분석, Prometheus/Grafana 지표 수집 및 경고<br/>
 - **CI/CD**<br/>
   pytest, 린트, 보안 스캔 자동 테스트, GitOps 기반 자동 배포<br/>
+
+## 3. API Documentation
+
+- Swagger UI: `/api/docs/`
+- ReDoc: `/api/redoc/`
+- OpenAPI Schema(JSON): `/api/schema/`
+
+### 1. Export OpenAPI file
+
+```bash
+python manage.py spectacular --file openapi.yaml
+python manage.py spectacular --format openapi-json --file openapi.json
+```
+
+### 2. Quick examples
+
+#### 1. Auth
+
+- Use JWT bearer tokens
+
+```
+Authorization: Bearer <access_token>
+```
+
+#### 2. Create Post
+
+- Endpoint: `POST /api/v1/posts/`
+
+- Request Body:
+
+```json
+{
+  "content": "오늘 점심 뭐먹지? #점심",
+  "asset_ids": ["11111111-1111-1111-1111-111111111111"],
+  "poll": {"options": ["국밥", "비빔밥"], "allow_multiple": false}
+}
+```
