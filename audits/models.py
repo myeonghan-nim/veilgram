@@ -7,18 +7,37 @@ User = get_user_model()
 
 
 class AuditAction(models.TextChoices):
+    # Auth
     LOGIN = "login", "Login"
     LOGOUT = "logout", "Logout"
+
+    # Posts
     CREATE_POST = "create_post", "Create Post"
     UPDATE_POST = "update_post", "Update Post"
     DELETE_POST = "delete_post", "Delete Post"
+
+    # Comments
+    CREATE_COMMENT = "create_comment", "Create Comment"
+    UPDATE_COMMENT = "update_comment", "Update Comment"
+    DELETE_COMMENT = "delete_comment", "Delete Comment"
+
+    # Relations
+    FOLLOW = "follow", "Follow"
+    UNFOLLOW = "unfollow", "Unfollow"
+
+    # Post engagements
     POST_LIKE = "post_like", "Post Like"
     POST_UNLIKE = "post_unlike", "Post Unlike"
     POST_BOOKMARK = "post_bookmark", "Post Bookmark"
     POST_UNBOOKMARK = "post_unbookmark", "Post Unbookmark"
     REPOST_CREATE = "repost_create", "Repost Create"
-    REPORT_POST = "report_post", "Report Post"
+
+    # Polls
+    VOTE_POLL = "vote_poll", "Vote Poll"
+
+    # Reports
     REPORT_USER = "report_user", "Report User"
+    REPORT_POST = "report_post", "Report Post"
     REPORT_COMMENT = "report_comment", "Report Comment"
 
 
