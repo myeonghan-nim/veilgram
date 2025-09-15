@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "storages",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     "assets",
     "audits.apps.AuditsConfig",
     "comments.apps.CommentsConfig",
@@ -244,7 +246,35 @@ AUTH_USER_MODEL = "users.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "VeilGram API",
+    "DESCRIPTION": "Anonymous SNS: text, images/videos, polls, real-time feed, search, moderation, notifications.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,  # /api/docs/, /api/redoc/에서 schema URL로 참조
+    "SCHEMA_PATH_PREFIX": r"/api/v1",  # 문서에 노출할 경로 접두
+    "CONTACT": {"name": "VeilGram Team"},
+    "LICENSE": {"name": "Proprietary"},
+    "SECURITY": [{"BearerAuth": []}],  # 전역 보안스키마 적용
+    "COMPONENT_SPLIT_REQUEST": True,  # req/resp 분리 스키마
+    "COMPONENT_NO_READ_ONLY_REQUIRED": True,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],  # 운영에선 IsAdminUser 권장
+    "SWAGGER_UI_DIST": "SIDECAR",  # CDN 無
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
+    "POSTPROCESSING_HOOKS": [],  # 필요시 후처리 훅 추가 가능
+    "SECURITY_SCHEMES": {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Authorization: Bearer <access_token>",
+        }
+    },
+}
+
 
 SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
