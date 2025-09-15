@@ -32,6 +32,7 @@ urlpatterns = [
     path("api/v1/", include("polls.urls")),
     path("api/v1/", include("posts.urls")),
     path("api/v1/", include("profiles.urls")),
+    path("api/v1/", include("realtime.urls")),
     path("api/v1/", include("relations.urls")),
     path("api/v1/", include("reports.urls")),
     path("api/v1/", include("search.urls")),
