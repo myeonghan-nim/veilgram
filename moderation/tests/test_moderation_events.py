@@ -4,8 +4,8 @@ import pytest
 from django.utils import timezone
 
 from moderation.bus import BusConsumer
-from moderation.models import ModerationRule, RuleType, ModerationReport
-from moderation.services import upsert_rule, invalidate_rules_cache
+from moderation.models import ModerationReport, ModerationRule, RuleType
+from moderation.services import invalidate_rules_cache, upsert_rule
 
 pytestmark = pytest.mark.django_db
 

@@ -89,8 +89,8 @@ class TestCommentReportAPI:
         self.client = APIClient()
         self.reporter = make_user()
         self.author = make_user()
-        from posts.models import Post
         from comments.models import Comment
+        from posts.models import Post
 
         self.post = Post.objects.create(author_id=self.author.id, content="post")
         self.comment = Comment.objects.create(post_id=self.post.id, user_id=self.author.id, content="c1")

@@ -1,7 +1,7 @@
 import json
-import yaml
 
 import pytest
+import yaml
 from django.urls import reverse
 from rest_framework.test import APIClient
 

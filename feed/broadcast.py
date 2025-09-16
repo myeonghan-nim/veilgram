@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Iterable, Dict
+from typing import Dict, Iterable
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer

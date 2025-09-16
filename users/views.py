@@ -1,21 +1,22 @@
-import uuid, secrets
+import secrets
+import uuid
 
 from django.db import transaction
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, OpenApiTypes
-from rest_framework import viewsets, status
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, OpenApiTypes, extend_schema
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
+from common.schema import ErrorOut, LoginOut, SignupOut
 
-from .models import User, DeviceCredential
-from .serializers import SignupInputSerializer, SignupOutputSerializer, DeviceLoginSerializer, LogoutSerializer
+from .models import DeviceCredential, User
+from .serializers import DeviceLoginSerializer, LogoutSerializer, SignupInputSerializer, SignupOutputSerializer
 from .services.session import enforce_single_device_session
-from common.schema import ErrorOut, SignupOut, LoginOut
 
 
 class AuthViewSet(viewsets.GenericViewSet):

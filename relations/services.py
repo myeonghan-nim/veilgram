@@ -3,11 +3,10 @@ from dataclasses import dataclass
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from .models import Follow, Block
-from .events import emit_user_followed, emit_user_unfollowed, emit_user_blocked, emit_user_unblocked
-
+from .events import emit_user_blocked, emit_user_followed, emit_user_unblocked, emit_user_unfollowed
+from .models import Block, Follow
 
 User = get_user_model()
 

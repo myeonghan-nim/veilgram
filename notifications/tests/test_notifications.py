@@ -4,7 +4,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from notifications.models import Device, NotificationSetting, Notification
+from notifications.models import Device, Notification, NotificationSetting
 from notifications.tasks import fanout_post_created, single_user_push
 
 pytestmark = pytest.mark.django_db

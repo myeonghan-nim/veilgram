@@ -1,5 +1,5 @@
 import uuid
-from typing import Iterable, List, Dict
+from typing import Dict, Iterable, List
 
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement

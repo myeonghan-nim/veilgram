@@ -2,7 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
-from django.db.models import UniqueConstraint, Q
+from django.db.models import Q, UniqueConstraint
 
 
 class Poll(models.Model):

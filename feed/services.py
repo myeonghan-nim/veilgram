@@ -1,11 +1,11 @@
 import uuid
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 from django.conf import settings
 
 from feed.cache import FeedCache
-from relations.models import Follow
 from posts.models import Post
+from relations.models import Follow
 
 _cache = FeedCache(settings.REDIS_URL, settings.FEED_CACHE_TTL_SEC)
 

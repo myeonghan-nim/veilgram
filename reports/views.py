@@ -1,14 +1,15 @@
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
-from rest_framework import status, viewsets, serializers
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .serializers import UserReportIn, PostReportIn, CommentReportIn, ReportOut
-from . import services
 from audits.models import AuditAction
 from audits.services import write_audit_log
 from common.schema import ErrorOut
+
+from . import services
+from .serializers import CommentReportIn, PostReportIn, ReportOut, UserReportIn
 
 UUID_RE = r"(?P<obj_id>[0-9a-fA-F-]{36})"
 

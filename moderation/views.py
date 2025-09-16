@@ -1,13 +1,14 @@
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
-from rest_framework import viewsets, status, mixins
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .serializers import ModerationCheckIn, ModerationCheckOut, ModerationRuleIn, ModerationRuleOut
-from .services import check_text, load_rules_snapshot, invalidate_rules_cache, upsert_rule
-from .models import ModerationRule
 from common.schema import ErrorOut, OkOut
+
+from .models import ModerationRule
+from .serializers import ModerationCheckIn, ModerationCheckOut, ModerationRuleIn, ModerationRuleOut
+from .services import check_text, invalidate_rules_cache, load_rules_snapshot, upsert_rule
 
 
 class ModerationCheckViewSet(viewsets.GenericViewSet):

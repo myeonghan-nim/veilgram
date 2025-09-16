@@ -1,13 +1,14 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
-from rest_framework import viewsets, status, serializers
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .services import RelationshipService
 from common.schema import ErrorOut
+
+from .services import RelationshipService
 
 User = get_user_model()
 

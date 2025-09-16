@@ -1,8 +1,7 @@
 import pytest
-
-from django.contrib.auth import get_user_model
-from channels.testing import WebsocketCommunicator
 from channels.layers import get_channel_layer
+from channels.testing import WebsocketCommunicator
+from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import AccessToken
 
 from realtime.groups import user_feed_group

@@ -2,7 +2,7 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from .models import Profile
-from .services.validators import NicknamePolicyValidator, ForbiddenNicknameValidator, normalize_nickname
+from .services.validators import ForbiddenNicknameValidator, NicknamePolicyValidator, normalize_nickname
 
 
 class ProfileReadSerializer(serializers.ModelSerializer):

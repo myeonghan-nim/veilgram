@@ -3,8 +3,8 @@ import sys
 
 import pytest
 
-from relations.models import Follow
 from posts.models import Post
+from relations.models import Follow
 
 
 @pytest.mark.django_db

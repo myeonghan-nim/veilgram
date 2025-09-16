@@ -4,8 +4,8 @@ import uuid as _uuid
 import pytest
 from django.contrib.auth import get_user_model
 
-from relations.models import Follow
 from realtime.groups import user_feed_group
+from relations.models import Follow
 
 pytestmark = pytest.mark.django_db
 User = get_user_model()

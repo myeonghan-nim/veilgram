@@ -2,8 +2,8 @@ import re
 import unicodedata
 from typing import Iterable, Set
 
-from django.core.cache import cache
 from django.conf import settings
+from django.core.cache import cache
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 

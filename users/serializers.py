@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User, DeviceCredential
+from .models import DeviceCredential, User
 
 
 class SignupInputSerializer(serializers.Serializer):

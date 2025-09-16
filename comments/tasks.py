@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, Any, Optional, Set
+from typing import Any, Dict, Optional, Set
 
 from celery import shared_task
 from django.conf import settings

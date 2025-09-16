@@ -2,9 +2,9 @@ import asyncio
 import json
 import signal
 
+from channels.layers import get_channel_layer
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from channels.layers import get_channel_layer
 from redis.asyncio import Redis
 
 from realtime.groups import user_feed_group

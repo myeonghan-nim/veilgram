@@ -1,7 +1,7 @@
-from django.urls import re_path, include
+from django.urls import include, re_path
 from rest_framework.routers import SimpleRouter
 
-from .views import PostCommentViewSet, CommentViewSet
+from .views import CommentViewSet, PostCommentViewSet
 
 router = SimpleRouter()
 router.register(r"comments", CommentViewSet, basename="comment")

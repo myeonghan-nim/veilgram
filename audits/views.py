@@ -1,11 +1,12 @@
 from django.db.models import QuerySet
 from django.utils.dateparse import parse_datetime
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes, OpenApiResponse, inline_serializer
-from rest_framework import mixins, viewsets, permissions, serializers
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view, inline_serializer
+from rest_framework import mixins, permissions, serializers, viewsets
 
-from .models import AuditLog, AuditAction
-from .serializers import AuditLogOut
 from common.schema import ErrorOut
+
+from .models import AuditAction, AuditLog
+from .serializers import AuditLogOut
 
 DRFAuditLogOut = inline_serializer(
     name="AuditLogOut",

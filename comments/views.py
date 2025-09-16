@@ -1,17 +1,18 @@
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
-from rest_framework import mixins, viewsets, status
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from assets.models import Asset, AssetStatus
+from assets.serializers import AssetOut
+from common.schema import AssetIdsIn, AttachErrorsOut, ErrorOut
+from posts.models import Post
+
 from .models import Comment
 from .permissions import IsAuthorOrReadOnly
 from .serializers import CommentSerializer
-from assets.models import Asset, AssetStatus
-from assets.serializers import AssetOut
-from posts.models import Post
-from common.schema import ErrorOut, AssetIdsIn, AttachErrorsOut
 
 
 @extend_schema_view(

@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 from typing import Sequence
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import Post
 from assets.models import Asset, AssetStatus
 from hashtags.services import attach_hashtags_to_post
 from moderation.services import check_text
 from polls.models import Poll
 from polls.services import create_poll as _create_poll
 from search.services import index_post
+
+from .models import Post
 
 
 def _max_attachments() -> int:

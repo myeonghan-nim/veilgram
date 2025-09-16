@@ -2,8 +2,8 @@ import pytest
 from django.contrib.auth import get_user_model
 
 import posts.signals  # noqa: F401
-from posts.models import Post, PostLike, Repost
 from notifications.models import Notification, NotificationSetting
+from posts.models import Post, PostLike, Repost
 
 pytestmark = pytest.mark.django_db
 User = get_user_model()

@@ -1,13 +1,14 @@
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample, inline_serializer
-from rest_framework import viewsets, mixins, status, serializers
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view, inline_serializer
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Device, NotificationSetting, Notification
-from .serializers import DeviceIn, DeviceOut, NotificationSettingIn, NotificationSettingOut, NotificationOut, MarkReadIn
 from common.schema import ErrorOut
+
+from .models import Device, Notification, NotificationSetting
+from .serializers import DeviceIn, DeviceOut, MarkReadIn, NotificationOut, NotificationSettingIn, NotificationSettingOut
 
 
 @extend_schema_view(

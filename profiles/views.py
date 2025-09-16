@@ -1,19 +1,20 @@
-from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
-from rest_framework import viewsets, mixins, status
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from common.schema import AvailabilityOut, ErrorOut
+from relations.models import Block, Follow
+
 from .models import Profile
-from .serializers import ProfileReadSerializer, ProfileCreateSerializer, ProfileUpdateSerializer
 from .permissions import IsOwnerOrReadOnlyProfile
+from .serializers import ProfileCreateSerializer, ProfileReadSerializer, ProfileUpdateSerializer
 from .services.validators import ForbiddenNicknameService, normalize_nickname
-from common.schema import ErrorOut, AvailabilityOut
-from relations.models import Follow, Block
 
 User = get_user_model()
 

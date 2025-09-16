@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from relations.models import Follow, Block
+from relations.models import Block, Follow
 
 User = get_user_model()
 

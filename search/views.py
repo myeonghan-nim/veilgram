@@ -1,12 +1,13 @@
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .serializers import SearchIn, UserHit, PostHit, HashtagHit
-from . import services
 from common.schema import ErrorOut, SearchOut
+
+from . import services
+from .serializers import HashtagHit, PostHit, SearchIn, UserHit
 
 
 def _pack(es_resp):

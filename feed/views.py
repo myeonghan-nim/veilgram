@@ -1,14 +1,15 @@
 import uuid
 
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
-from rest_framework import viewsets, serializers
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema
+from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from common.schema import ErrorOut
 
 from .serializers import FeedPostOut
 from .services import fetch_following_feed, fetch_hashtag_feed
-from common.schema import ErrorOut
 
 
 class FeedViewSet(viewsets.ViewSet):

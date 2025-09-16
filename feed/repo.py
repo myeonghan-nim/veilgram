@@ -9,13 +9,13 @@ Feed 저장소 추상화.
 """
 
 from __future__ import annotations
-import uuid
+
 import datetime as dt
-from typing import List, Dict
+import uuid
+from typing import Dict, List
 
 from django.conf import settings
 from django.utils import timezone
-
 
 # ---------- 공용 타입 ----------
 FeedRow = Dict[str, str]  # {"post_id": "...", "author_id": "...", "created_at": "..."}

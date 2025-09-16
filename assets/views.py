@@ -1,15 +1,15 @@
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
-from rest_framework import viewsets, status, serializers
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-
-from .models import Asset, AssetStatus
-from .serializers import PrepareUploadIn, PrepareUploadOut, CompleteUploadIn, AssetOut
-from . import s3
 from common.schema import ErrorOut
+
+from . import s3
+from .models import Asset, AssetStatus
+from .serializers import AssetOut, CompleteUploadIn, PrepareUploadIn, PrepareUploadOut
 
 
 class AssetUploadViewSet(viewsets.GenericViewSet):

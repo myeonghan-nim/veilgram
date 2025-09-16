@@ -1,16 +1,17 @@
 from datetime import timedelta
 
-from django.utils import timezone
 from django.db.models import Count
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiTypes, OpenApiExample
-from rest_framework import viewsets, serializers
+from django.utils import timezone
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema
+from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from common.schema import ErrorOut
+
 from .models import Hashtag, PostHashtag
 from .serializers import HashtagOut, PopularHashtagOut
-from common.schema import ErrorOut
 
 
 class HashtagViewSet(viewsets.ViewSet):

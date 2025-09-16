@@ -1,9 +1,8 @@
 import pytest
-
 from django.contrib.auth import get_user_model
 
 import posts.signals  # noqa: F401
-from notifications.models import Notification, Device, NotificationSetting
+from notifications.models import Device, Notification, NotificationSetting
 from posts.models import Post
 from relations.models import Follow
 

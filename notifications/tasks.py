@@ -1,13 +1,14 @@
-from typing import Iterable, Dict, List
+from typing import Dict, Iterable, List
 
 from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
+from relations.models import Follow
+
 from .models import Device, Notification, NotificationSetting
 from .providers import get_provider
-from relations.models import Follow
 
 User = get_user_model()
 

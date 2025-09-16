@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Device, NotificationSetting, Notification
+from .models import Device, Notification, NotificationSetting
 
 
 class DeviceIn(serializers.ModelSerializer):

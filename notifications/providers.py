@@ -1,4 +1,4 @@
-from typing import Iterable, Dict, Protocol, Tuple
+from typing import Dict, Iterable, Protocol, Tuple
 
 
 class PushProvider(Protocol):
@@ -30,7 +30,7 @@ class DummyProvider:
 class FcmProvider:
     def __init__(self):
         try:
-            from firebase_admin import messaging, initialize_app  # type: ignore
+            from firebase_admin import initialize_app, messaging  # type: ignore
 
             self.messaging = messaging
             try:

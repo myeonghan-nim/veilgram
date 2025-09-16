@@ -1,9 +1,10 @@
 from rest_framework import serializers
 
-from .models import Bookmark, Repost
 from assets.serializers import AssetOut
 from polls.models import Poll
 from polls.serializers import PollCreateIn
+
+from .models import Bookmark, Repost
 
 
 class PostCreateIn(serializers.Serializer):

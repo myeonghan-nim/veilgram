@@ -5,9 +5,9 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
-from moderation.models import ModerationRule, RuleType, ModerationReport
-from moderation.services import load_rules_snapshot
 from moderation.bus import BusConsumer
+from moderation.models import ModerationReport, ModerationRule, RuleType
+from moderation.services import load_rules_snapshot
 
 pytestmark = pytest.mark.django_db
 

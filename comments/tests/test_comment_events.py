@@ -3,9 +3,9 @@ from django.contrib.auth import get_user_model
 
 # AppConfig.ready() 보장 + 테스트 안정성 위해 명시 임포트
 import comments.signals  # noqa: F401
-from posts.models import Post
 from comments.models import Comment
 from notifications.models import Notification, NotificationSetting
+from posts.models import Post
 
 pytestmark = pytest.mark.django_db
 User = get_user_model()

@@ -1,9 +1,10 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import Comment
 from assets.serializers import AssetOut
 from moderation.services import check_text
+
+from .models import Comment
 
 
 class CommentSerializer(serializers.ModelSerializer):

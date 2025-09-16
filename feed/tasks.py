@@ -1,16 +1,16 @@
 from __future__ import annotations
+
 import logging
 import uuid
 from typing import Dict, Iterable, List
 
-from celery import shared_task
-from django.conf import settings
 from asgiref.sync import async_to_sync
+from celery import shared_task
 from channels.layers import get_channel_layer
+from django.conf import settings
 
+from feed.services import handle_hashtags_extracted, handle_post_created, handle_post_deleted, handle_user_follow_changed
 from relations.models import Follow
-
-from feed.services import handle_post_created, handle_post_deleted, handle_hashtags_extracted, handle_user_follow_changed
 
 log = logging.getLogger(__name__)
 _channel_layer = get_channel_layer()

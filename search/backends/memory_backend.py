@@ -1,4 +1,4 @@
-from typing import Iterable, Dict, Any
+from typing import Any, Dict, Iterable
 
 
 class InMemoryBackend:

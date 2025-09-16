@@ -1,8 +1,8 @@
 import urllib.parse
 from typing import Optional
 
-from django.conf import settings
 from channels.middleware import BaseMiddleware
+from django.conf import settings
 from rest_framework_simplejwt.backends import TokenBackend
 
 

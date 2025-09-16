@@ -7,7 +7,7 @@ from django.core.management import call_command
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from audits.models import AuditLog, AuditAction
+from audits.models import AuditAction, AuditLog
 from audits.services import write_audit_log
 from audits.signals import audit_event
 

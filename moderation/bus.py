@@ -3,8 +3,8 @@ from typing import Dict
 
 from django.db import transaction
 
-from .services import check_text
 from .models import ModerationReport
+from .services import check_text
 
 logger = logging.getLogger(__name__)
 

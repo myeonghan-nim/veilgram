@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.core.cache import cache
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
 from users.models import DeviceCredential
 

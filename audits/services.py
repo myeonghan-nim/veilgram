@@ -1,8 +1,8 @@
-from typing import Optional, Mapping, Union
+from typing import Mapping, Optional, Union
 
 from django.contrib.auth import get_user_model
 
-from .models import AuditLog, AuditAction
+from .models import AuditAction, AuditLog
 from .utils import hashed_ip_ua_from_request
 
 User = get_user_model()
