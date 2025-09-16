@@ -3,11 +3,11 @@ line-length = 180
 target-version = ["py312"]
 exclude = '''
 /(
-  \.git
- | \.venv
- | build
- | dist
- | migrations
+  .git
+  | venv
+  | build
+  | dist
+  | migrations
 )/
 '''
 
