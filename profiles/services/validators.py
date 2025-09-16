@@ -1,6 +1,5 @@
 import re
 import unicodedata
-from typing import Iterable, Set
 
 from django.conf import settings
 from django.core.cache import cache

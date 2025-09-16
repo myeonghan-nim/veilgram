@@ -5,14 +5,6 @@ from .models import Profile
 from .services.validators import ForbiddenNicknameValidator, NicknamePolicyValidator, normalize_nickname
 
 
-class ProfileReadSerializer(serializers.ModelSerializer):
-    user_id = serializers.UUIDField(read_only=True)
-
-    class Meta:
-        model = Profile
-        fields = ("id", "user_id", "nickname", "status_message", "created_at", "updated_at")
-
-
 class ProfileCreateSerializer(serializers.ModelSerializer):
     nickname = serializers.CharField(
         validators=[NicknamePolicyValidator(), ForbiddenNicknameValidator()],
@@ -35,7 +27,7 @@ class ProfileCreateSerializer(serializers.ModelSerializer):
         try:
             return Profile.objects.create(user=user, **validated_data)
         except IntegrityError:
-            raise serializers.ValidationError({"nickname": "Already taken nickname."})
+            raise serializers.ValidationError({"nickname": "Already taken nickname."}) from None
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
@@ -55,7 +47,7 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         try:
             instance.save()
         except IntegrityError:
-            raise serializers.ValidationError({"nickname": "Already taken nickname."})
+            raise serializers.ValidationError({"nickname": "Already taken nickname."}) from None
         return instance
 
 

@@ -54,7 +54,7 @@ class TestPostLikeEvents(BaseEventTest):
         monkeypatch.setattr("posts.tasks.publish_event", fake_publish)
 
         # 생성 → 시그널 → Celery 태스크 → 버스 발행 + 알림 생성
-        like = PostLike.objects.create(user=actor, post=post)
+        _ = PostLike.objects.create(user=actor, post=post)
 
         # 버스 이벤트 검증
         assert any(e == "PostLiked" and d.get("post_id") == str(post.id) and d.get("actor_id") == str(actor.id) and d.get("author_id") == str(author.id) for (e, d, _) in captured)
@@ -100,7 +100,7 @@ class TestRepostEvents(BaseEventTest):
         monkeypatch.setattr("posts.tasks.publish_event", fake_publish)
 
         # 생성 → 시그널 → Celery 태스크 → 버스 발행 + 알림 생성
-        rp = Repost.objects.create(user=actor, original_post=post)
+        _ = Repost.objects.create(user=actor, original_post=post)
 
         # 버스 이벤트 검증
         assert any(

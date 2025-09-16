@@ -26,7 +26,7 @@ def _broadcast_following(users: Iterable[uuid.UUID | str], payload: Dict):
     # Channels가 비활성인 환경(테스트 등)에서도 안전하게 no-op 처리
     if not _channel_layer:
         return
-    for u in set(str(x) for x in users):
+    for u in {str(x) for x in users}:
         async_to_sync(_channel_layer.group_send)(_group_name_for(u), {"type": "feed.update", "payload": payload})
 
 

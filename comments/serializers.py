@@ -42,7 +42,7 @@ class CommentSerializer(serializers.ModelSerializer):
                 try:
                     return Post.objects.get(id=post_id)
                 except Post.DoesNotExist:
-                    raise serializers.ValidationError("Post not found.")
+                    raise serializers.ValidationError("Post not found.") from None
         return None
 
     def get_author(self, obj):
@@ -97,4 +97,4 @@ class CommentSerializer(serializers.ModelSerializer):
             instance.full_clean()
             return instance
         except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict)
+            raise serializers.ValidationError(e.message_dict) from None

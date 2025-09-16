@@ -113,7 +113,7 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
             )
         except DjangoValidationError as e:
             detail = getattr(e, "message_dict", None) or getattr(e, "messages", None) or str(e)
-            raise DRFValidationError(detail)
+            raise DRFValidationError(detail) from None
 
         self._audit_post(AuditAction.CREATE_POST, post, {"endpoint": "POST /api/v1/posts"})
         return Response(PostOut(post).data, status=status.HTTP_201_CREATED)
@@ -130,7 +130,7 @@ class PostViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.Lis
             try:
                 UUID(author_id)
             except Exception:
-                raise DRFValidationError({"author_id": "Invalid UUID"})
+                raise DRFValidationError({"author_id": "Invalid UUID"}) from None
             qs = qs.filter(author_id=author_id)
         else:
             qs = qs.filter(author_id=request.user.id)

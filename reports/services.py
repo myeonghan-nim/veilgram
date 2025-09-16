@@ -22,11 +22,11 @@ def create_user_report(*, reporter, target_user_id: str, reasons: list[str], blo
     try:
         target = User.objects.get(id=target_user_id)
     except ObjectDoesNotExist:
-        raise NotFound({"detail": "Target user not found."})
+        raise NotFound({"detail": "Target user not found."}) from None
 
     # 즉시 중복 방지(유연성을 위해 애플리케이션 레벨로)
     if UserReport.objects.filter(reporter=reporter, target_user=target).exists():
-        raise ValidationError({"detail": "Already reported."})
+        raise ValidationError({"detail": "Already reported."}) from None
 
     report = UserReport.objects.create(reporter=reporter, target_user=target, reasons=_join_reasons(reasons))
 
@@ -47,13 +47,13 @@ def create_post_report(*, reporter, post_id: str, reasons: list[str], block: boo
     try:
         post = Post.objects.select_related("author").get(id=post_id)
     except Post.DoesNotExist:
-        raise NotFound({"detail": "Post not found."})
+        raise NotFound({"detail": "Post not found."}) from None
 
     if post.author_id == reporter.id:
-        raise ValidationError({"detail": "You cannot report your own post."})
+        raise ValidationError({"detail": "You cannot report your own post."}) from None
 
     if PostReport.objects.filter(reporter=reporter, post=post).exists():
-        raise ValidationError({"detail": "Already reported."})
+        raise ValidationError({"detail": "Already reported."}) from None
 
     report = PostReport.objects.create(reporter=reporter, post=post, reasons=_join_reasons(reasons), block=block)
 
@@ -73,13 +73,13 @@ def create_comment_report(*, reporter, comment_id: str, reasons: list[str], bloc
     try:
         comment = Comment.objects.select_related("user", "post").get(id=comment_id)
     except Comment.DoesNotExist:
-        raise NotFound({"detail": "Comment not found."})
+        raise NotFound({"detail": "Comment not found."}) from None
 
     if comment.user_id == reporter.id:
-        raise ValidationError({"detail": "You cannot report your own comment."})
+        raise ValidationError({"detail": "You cannot report your own comment."}) from None
 
     if CommentReport.objects.filter(reporter=reporter, comment=comment).exists():
-        raise ValidationError({"detail": "Already reported."})
+        raise ValidationError({"detail": "Already reported."}) from None
 
     report = CommentReport.objects.create(reporter=reporter, comment=comment, reasons=_join_reasons(reasons), block=block)
 

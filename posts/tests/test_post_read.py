@@ -90,7 +90,7 @@ class TestPostRetrieve:
 class TestPostList:
     def test_list_my_timeline_cursor(self, auth_client, user):
         # 내 글 25개 생성(커서 페이징 검증)
-        posts = [Post.objects.create(author=user, content=f"p{i}") for i in range(25)]
+        _ = [Post.objects.create(author=user, content=f"p{i}") for i in range(25)]
         url = reverse("posts-list")
 
         # page1

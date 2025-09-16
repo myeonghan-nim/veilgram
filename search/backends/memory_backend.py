@@ -5,7 +5,10 @@ class InMemoryBackend:
     def __init__(self):
         self.users, self.posts, self.tags = {}, {}, {}
 
-    def ensure_indices(self): ...
+    def ensure_indices(self) -> None:
+        """Ensure indices exist (stub)."""
+        ...
+
     def drop_indices(self):
         self.users.clear()
         self.posts.clear()

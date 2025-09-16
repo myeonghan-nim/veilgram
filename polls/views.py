@@ -65,7 +65,7 @@ class PollViewSet(viewsets.GenericViewSet):
             created = create_poll(owner=request.user, option_texts=ser.validated_data["options"], allow_multiple=ser.validated_data["allow_multiple"])
         except DjangoValidationError as e:
             detail = getattr(e, "message_dict", None) or getattr(e, "messages", None) or str(e)
-            raise DRFValidationError(detail)
+            raise DRFValidationError(detail) from None
         return Response(PollOut(created.poll).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
@@ -111,7 +111,7 @@ class PollViewSet(viewsets.GenericViewSet):
             result = cast_vote(poll=poll, voter=request.user, option=option)
         except DjangoValidationError as e:
             detail = getattr(e, "message_dict", None) or getattr(e, "messages", None) or str(e)
-            raise DRFValidationError(detail)
+            raise DRFValidationError(detail) from None
 
         out = VoteOut({"poll": result.poll, "my_option_id": result.my_option_id})
         return Response(out.data, status=status.HTTP_200_OK)
