@@ -17,7 +17,7 @@ from typing import Dict, List
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError, DataError
+from django.db import DataError, IntegrityError
 from django.utils import timezone
 
 # ---------- 공용 타입 ----------
