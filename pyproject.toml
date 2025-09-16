@@ -15,4 +15,5 @@ exclude = '''
 profile = "black"
 line_length = 180
 known_first_party = ["veilgram"]
+skip = ["migrations", "build", "dist", "venv", ".git"]
 combine_as_imports = true
