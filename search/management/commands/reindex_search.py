@@ -52,7 +52,10 @@ class Command(BaseCommand):
 
             hqs = Hashtag.objects.annotate(post_count=Count("post_hashtags")).values("name", "post_count")
             b.bulk_index("hashtag", ({"name": h["name"], "post_count": h["post_count"]} for h in hqs))
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.debug(f"Hashtag indexing skipped: {e}")
 
         self.stdout.write(self.style.SUCCESS("Search indices rebuilt"))
