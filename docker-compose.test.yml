@@ -46,12 +46,19 @@ services:
     command: ["server","/data","--console-address",":9001"]
     volumes:
       - minio_test_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 10s
 
   test_minio_mc_mb:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     container_name: veilgram_test_minio_mc_mb
     <<: *test-env
-    depends_on: [test_minio]
+    depends_on:
+      test_minio: { condition: service_healthy }
     environment:
       MC_HOST_minio: "http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@veilgram_test_minio:9000"
     command: ["mb", "-p", "minio/${AWS_STORAGE_BUCKET_NAME:-veilgram-test}"]
@@ -63,8 +70,8 @@ services:
     <<: *test-env
     depends_on:
       test_db: { condition: service_healthy }
-      test_redis: { condition: service_started }
-      test_minio: { condition: service_started }
+      test_redis: { condition: service_healthy }
+      test_minio: { condition: service_healthy }
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@veilgram_test_db:5432/${POSTGRES_DB}
       REDIS_URL: redis://:${REDIS_PASSWORD}@veilgram_test_redis:6379/0
