@@ -1,0 +1,6 @@
+skips: []
+exclude_dirs:
+  - tests
+  - migrations
+severity: "MEDIUM"
+confidence: "MEDIUM"
