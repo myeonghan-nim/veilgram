@@ -63,7 +63,7 @@ jobs:
 
       - name: Run tests with docker compose
         run: |
-          docker compose -f docker-compose.test.yml --env-file .env.test up --build --exit-code-from test_app test_app
+          docker compose -f docker-compose.test.yml --env-file .env.test up --build --exit-code-from test test
 
       - name: Upload coverage HTML
         if: always()
@@ -76,6 +76,9 @@ jobs:
   security:
     name: Security (pip-audit + bandit + trivy fs)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
