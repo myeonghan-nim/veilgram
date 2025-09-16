@@ -28,7 +28,7 @@ confluent-kafka==2.11.1
 constantly==23.10.4
 cryptography==45.0.7
 daphne==4.2.1
-Django==5.2.4
+Django==5.2.6
 django-environ==0.12.0
 django-redis==6.0.0
 django-storages==1.14.6
