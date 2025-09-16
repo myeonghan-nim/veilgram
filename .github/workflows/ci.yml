@@ -35,7 +35,7 @@ jobs:
           pip install black isort flake8 flake8-bugbear flake8-comprehensions
 
       - name: Black check
-        run: black --check .
+        run: black --check --diff --color .
 
       - name: isort check
         run: isort --check-only .
