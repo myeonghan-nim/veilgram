@@ -38,7 +38,9 @@ ensure POSTGRES_PASSWORD "postgres"
 
 # Redis (requirepass 사용)
 ensure REDIS_PASSWORD "redispass"
-ensure REDIS_URL "redis://:${REDIS_PASSWORD}@test_redis:6379/0"
+REDIS_PASSWORD_VAL="$(grep -E '^REDIS_PASSWORD=' "$TARGET" | cut -d= -f2- || true)"
+if [ -z "$REDIS_PASSWORD_VAL" ]; then REDIS_PASSWORD_VAL="redispass"; fi
+ensure REDIS_URL "redis://:${REDIS_PASSWORD_VAL}@test_redis:6379/0"
 
 # MinIO
 ensure MINIO_ENDPOINT "http://test_minio:9000"
