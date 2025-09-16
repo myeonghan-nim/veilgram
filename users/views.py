@@ -1,8 +1,9 @@
+import logging
 import secrets
 import uuid
 
 from django.db import transaction
-from drf_spectacular.utils import OpenApiExample, OpenApiResponse, OpenApiTypes, extend_schema
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -17,6 +18,8 @@ from common.schema import ErrorOut, LoginOut, SignupOut
 from .models import DeviceCredential, User
 from .serializers import DeviceLoginSerializer, LogoutSerializer, SignupInputSerializer, SignupOutputSerializer
 from .services.session import enforce_single_device_session
+
+logger = logging.getLogger(__name__)
 
 
 class AuthViewSet(viewsets.GenericViewSet):
@@ -156,13 +159,13 @@ class AuthViewSet(viewsets.GenericViewSet):
             for t in OutstandingToken.objects.filter(user=request.user):
                 try:
                     BlacklistedToken.objects.get_or_create(token=t)
-                except Exception:
-                    pass
+                except TokenError as e:
+                    logger.debug("BlacklistedToken ignored: %s", e)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         refresh_token = s.validated_data.get("refresh", "")
         try:
             RefreshToken(refresh_token).blacklist()
-        except Exception:
-            pass
+        except TokenError as e:
+            logger.debug("BlacklistedToken ignored: %s", e)
         return Response(status=status.HTTP_204_NO_CONTENT)

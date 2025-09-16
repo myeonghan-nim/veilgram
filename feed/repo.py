@@ -11,10 +11,13 @@ Feed 저장소 추상화.
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import uuid
 from typing import Dict, List
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, DataError
 from django.utils import timezone
 
 # ---------- 공용 타입 ----------
@@ -106,8 +109,9 @@ class DjangoFeedRepo(BaseFeedRepo):
         if self.PostHashtag:
             try:
                 self.PostHashtag.objects.get_or_create(hashtag=tag, post_id=_to_uuid(post_id), defaults={"author_id": _to_uuid(author_id), "created_at": created_at})
-            except Exception:
-                pass
+            except (IntegrityError, DataError, ValidationError) as e:
+                logger = logging.getLogger(__name__)
+                logger.warning("PostHashtag ensure failed (post_id=%s, tag=%s): %s", post_id, tag, e, exc_info=True)
 
     def query_following_posts(self, author_ids, page, size):
         if not author_ids:

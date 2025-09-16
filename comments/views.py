@@ -60,11 +60,10 @@ class PostCommentViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewset
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
         if getattr(self, "action", None) in {"update", "partial_update", "destroy", "retrieve"}:
-            try:
-                obj = self.get_object()
-                ctx["post"] = obj.post
-            except Exception:
-                pass
+            obj = self.get_object()
+            post = getattr(obj, "post", None)
+            if post is not None:
+                ctx["post"] = post
         return ctx
 
 

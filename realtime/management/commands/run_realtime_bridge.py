@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import signal
 
 from channels.layers import get_channel_layer
@@ -26,9 +27,14 @@ class Command(BaseCommand):
                 if not msg or msg.get("type") != "message":
                     continue
 
+                data = None
                 try:
                     data = json.loads(msg["data"])
-                except Exception:
+                except json.JSONDecodeError as e:
+                    logger = logging.getLogger(__name__)
+                    logger.warning("Bridge: invalid JSON, skipping: %s", e, exc_info=False)
+
+                if data is None:
                     continue
 
                 if data.get("type") == "feed_update":
