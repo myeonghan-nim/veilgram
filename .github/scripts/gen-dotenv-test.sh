@@ -31,7 +31,7 @@ ensure DEBUG "1"
 ensure ALLOWED_HOSTS "*"
 
 # PostgreSQL (compose의 서비스명 기준)
-ensure POSTGRES_HOST "test_db"
+ensure POSTGRES_HOST "veilgram_test_db"
 ensure POSTGRES_DB "veilgram_test"
 ensure POSTGRES_USER "postgres"
 ensure POSTGRES_PASSWORD "postgres"
@@ -43,10 +43,10 @@ if [ -z "$REDIS_PASSWORD_VAL" ]; then REDIS_PASSWORD_VAL="redispass"; fi
 ensure REDIS_URL "redis://:${REDIS_PASSWORD_VAL}@test_redis:6379/0"
 
 # MinIO
-ensure MINIO_ENDPOINT "http://test_minio:9000"
-ensure MINIO_ACCESS_KEY "minio"
-ensure MINIO_SECRET_KEY "minio12345"
-ensure MINIO_BUCKET "veilgram"
+ensure MINIO_ROOT_USER "minio"
+ensure MINIO_ROOT_PASSWORD "minio12345"
+ensure AWS_S3_ENDPOINT_URL "http://veilgram_test_minio:9000"
+ensure AWS_STORAGE_BUCKET_NAME "veilgram-test"
 
 # 검색/피드 등 선택 기능은 테스트에서 기본 OFF
 ensure OPENSEARCH_ENABLED "0"
