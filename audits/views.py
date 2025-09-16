@@ -7,7 +7,7 @@ from .models import AuditLog, AuditAction
 from .serializers import AuditLogOut
 from common.schema import ErrorOut
 
-AuditLogOut = inline_serializer(
+DRFAuditLogOut = inline_serializer(
     name="AuditLogOut",
     fields={
         "id": serializers.UUIDField(),
@@ -54,7 +54,7 @@ class IsAdminOrSelfList(permissions.BasePermission):
             OpenApiParameter(name="since", location=OpenApiParameter.QUERY, type=OpenApiTypes.DATETIME, required=False, description="이 시각(포함) 이후의 로그"),
             OpenApiParameter(name="until", location=OpenApiParameter.QUERY, type=OpenApiTypes.DATETIME, required=False, description="이 시각(포함) 이전의 로그"),
         ],
-        responses={200: OpenApiResponse(response=AuditLogOut), 401: OpenApiResponse(response=ErrorOut), 403: OpenApiResponse(response=ErrorOut)},
+        responses={200: OpenApiResponse(response=DRFAuditLogOut), 401: OpenApiResponse(response=ErrorOut), 403: OpenApiResponse(response=ErrorOut)},
     )
 )
 class AuditLogViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
