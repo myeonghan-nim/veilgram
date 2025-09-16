@@ -63,11 +63,31 @@ jobs:
 
       - name: Ensure MinIO bucket
         run: |
-          docker run --rm --network veilgram-test-net \
-            --entrypoint sh minio/mc:latest -c "\
-              mc alias set local http://test_minio:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY && \
-              mc mb -p --ignore-existing local/$MINIO_BUCKET && \
-              mc ls local"
+          set -euo pipefail
+
+          # 1) test_minio 컨테이너의 네트워크 이름을 동적으로 추출
+          NET=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' \
+            $(docker compose -f docker-compose.test.yml --env-file .env.test ps -q test_minio))
+          echo "Using network: $NET"
+
+          # 2) MinIO 준비상태 대기 (내부 네트워크에서 curl로 체크)
+          for i in {1..40}; do
+            if docker run --rm --network "$NET" curlimages/curl:8.10.1 \
+                -fsS http://test_minio:9000/minio/health/ready >/dev/null 2>&1; then
+              echo "MinIO is ready"
+              break
+            fi
+            sleep 2
+            if [ "$i" -eq 40 ]; then
+              echo "MinIO not ready in time" >&2
+              exit 1
+            fi
+          done
+
+          # 3) 버킷 생성 (이미 있으면 무시)
+          docker run --rm --network "$NET" \
+            -e MC_HOST_local="http://${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}@test_minio:9000" \
+            minio/mc:latest mb -p --ignore-existing local/${MINIO_BUCKET}
         env:
           MINIO_ACCESS_KEY: minio
           MINIO_SECRET_KEY: minio12345
